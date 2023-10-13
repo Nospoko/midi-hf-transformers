@@ -187,10 +187,14 @@ class DstartEncoder(MidiEncoder):
 
 
 class MultiTokEncoder(MidiEncoder):
-    def __init__(self, quantization_cfg: DictConfig):
+    def __init__(self, quantization_cfg: DictConfig, keys: list[str] = None):
         super().__init__()
         self.quantization_cfg = quantization_cfg
-        self.keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
+        if keys is None:
+            self.keys = ["pitch", "dstart_bin", "duration_bin", "velocity_bin"]
+        else:
+            self.keys = keys
+
         self.specials = ["<CLS>"]
 
         self.vocab = list(self.specials)
@@ -224,9 +228,9 @@ class MultiTokEncoder(MidiEncoder):
         tokens = []
         n_samples = len(record[self.keys[0]])
         for idx in range(n_samples):
-            pitch_token = f"{record['pitch'][idx]:0.0f}"
-            time_token = f"{record['start_bin']-record['duration_bin']:0.0f}"
-            velocity_token = f"{record['velocity_bin']:0.0f}"
+            pitch_token = f"{record[self.keys[0]][idx]:0.0f}"
+            time_token = f"{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
+            velocity_token = f"{record[self.keys[3]][idx]:0.0f}"
             tokens += [pitch_token, time_token, velocity_token]
 
         return tokens

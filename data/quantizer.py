@@ -123,13 +123,13 @@ class MidiQuantizer:
         return vocab
 
 
-class MidiRTQuantizer:
+class MidiCTQuantizer:
     def __init__(
-            self,
-            n_duration_bins: int = 3,
-            n_velocity_bins: int = 3,
-            n_start_bins: int = 625,
-            sequence_duration: float = 20.0,
+        self,
+        n_duration_bins: int = 3,
+        n_velocity_bins: int = 3,
+        n_start_bins: int = 625,
+        sequence_duration: float = 20.0,
     ):
         self.n_velocity_bins = n_velocity_bins
         self.n_duration_bins = n_duration_bins
@@ -138,7 +138,7 @@ class MidiRTQuantizer:
         self._build()
 
     def __rich_repr__(self):
-        yield "MidiRTQuantizer"
+        yield "MidiCTQuantizer"
         yield "n_duration_bins", self.n_duration_bins
         yield "n_velocity_bins", self.n_velocity_bins
         yield "n_start_bins", self.n_start_bins
@@ -185,5 +185,29 @@ class MidiRTQuantizer:
         self.bin_to_velocity = [int(0.8 * self.velocity_bin_edges[1])]
 
         for it in range(2, len(self.velocity_bin_edges)):
-            dstart = (self.velocity_bin_edges[it - 1] + self.velocity_bin_edges[it]) / 2
-            self.bin_to_velocity.append(int(dstart))
+            velocity = (self.velocity_bin_edges[it - 1] + self.velocity_bin_edges[it]) / 2
+            self.bin_to_velocity.append(int(velocity))
+
+    def inject_quantization_features(self, piece: MidiPiece) -> MidiPiece:
+        # Try not to overwrite anything
+        df = piece.df.copy()
+        source = dict(piece.source) | {"quantized": True}
+
+        # Make the quantization
+        df = self.quantize_frame(df)
+        out = MidiPiece(df=df, source=source)
+        return out
+
+    def quantize_frame(self, df: pd.DataFrame) -> pd.DataFrame:
+        df["start_bin"] = np.digitize(df.start, self.start_bin_edges) - 1
+        df["duration_bin"] = np.digitize(df.duration, self.duration_bin_edges) - 1
+        df["velocity_bin"] = np.digitize(df.velocity, self.velocity_bin_edges) - 1
+
+        return df
+
+    def apply_quantization(self, df: pd.DataFrame) -> pd.DataFrame:
+        df["start"] = df.start_bin.map(lambda it: self.bin_to_start[it])
+        df["duration"] = df.duration_bin.map(lambda it: self.bin_to_duration[it])
+        df["end"] = df.start + df.duration
+        df["velocity"] = df.velocity_bin.map(lambda it: self.bin_to_velocity[it])
+        return df
