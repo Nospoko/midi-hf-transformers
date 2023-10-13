@@ -55,7 +55,7 @@ def CT_quantized_piece_to_records(
 ):
     chopped_sequences = []
     n_samples = 1 + int(piece.df.iloc[-1]["start"] - sequence_duration) // sequence_step
-    df = piece.df
+    df = piece.df.copy()
     for jt in range(n_samples):
         start = jt * sequence_step
         finish = start
@@ -64,6 +64,8 @@ def CT_quantized_piece_to_records(
             finish += 1
 
         part = df.iloc[start:finish]
+        part["start"] = part["start"] - start
+        part["end"] = part["end"] - start
 
         source = piece.source.copy()
         source |= {"start": start, "finish": finish}
@@ -329,7 +331,7 @@ def main():
     record = quantizer.apply_quantization(record)
     piece = ff.MidiPiece(record)
     print(piece.df)
-    # ff.view.make_piano_roll_video(piece, "test.mp4")
+    ff.view.make_piano_roll_video(piece, "test.mp4")
 
     from data.tokenizer import MultiTokEncoder, VelocityEncoder
 
