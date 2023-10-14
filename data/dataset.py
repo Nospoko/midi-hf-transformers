@@ -157,13 +157,11 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        src_encoder: MidiEncoder,
-        tgt_encoder: MidiEncoder,
+        encoder: MidiEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg
-        self.src_encoder = src_encoder
-        self.tgt_encoder = tgt_encoder
+        self.encoder = encoder
 
     def __len__(self) -> int:
         return len(self.dataset)
@@ -173,13 +171,12 @@ class MyTokenizedMidiDataset(TorchDataset):
         yield "size", len(self)
         # Nicer print
         yield "cfg", OmegaConf.to_container(self.dataset_cfg)
-        yield "src_encoder", self.src_encoder
-        yield "tgt_encoder", self.tgt_encoder
+        yield "encoder", self.encoder
 
     def __getitem__(self, idx: int) -> dict:
         record = self.dataset[idx]
-        source_tokens_ids = self.src_encoder.encode(record)
-        target_tokens_ids = self.tgt_encoder.encode(record)
+        source_tokens_ids = self.encoder.encode_src(record)
+        target_tokens_ids = self.encoder.encode_tgt(record)
 
         source_tokens_ids, target_tokens_ids = self.add_cls_token(source_tokens_ids, target_tokens_ids)
 
@@ -195,7 +192,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         return out
 
     def add_cls_token(self, src_token_ids: list[int], tgt_token_ids: list[int]):
-        cls_token_id = self.tgt_encoder.token_to_id["<CLS>"]
+        cls_token_id = self.encoder.token_to_id["<CLS>"]
         src_token_ids.insert(0, cls_token_id)
         tgt_token_ids.insert(0, cls_token_id)
 
@@ -335,6 +332,8 @@ def main():
     maximum = max(lengths)
     print(maximum)
     plt.plot(lengths)
+    plt.ylabel("length")
+    plt.xlabel("idx")
     plt.show()
 
     record = pd.DataFrame(dataset[0])
@@ -343,20 +342,18 @@ def main():
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
-    from data.tokenizer import MultiTokEncoder, VelocityEncoder
+    from data.tokenizer import MultiTokEncoder
 
     keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
-    src_encoder = MultiTokEncoder(cfg.quantization, keys=keys)
-    tgt_encoder = VelocityEncoder()
+    encoder = MultiTokEncoder(cfg.quantization, keys=keys)
     test_dataset = MyTokenizedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,
-        src_encoder=src_encoder,
-        tgt_encoder=tgt_encoder,
+        encoder=encoder,
     )
     print(test_dataset[77])
 
-    tokens = [src_encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
+    tokens = [encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
     print("src tokens: ", tokens)
 
 
