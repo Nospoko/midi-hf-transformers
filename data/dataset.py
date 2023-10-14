@@ -7,6 +7,7 @@ import torch
 import pandas as pd
 import fortepyan as ff
 from tqdm import tqdm
+from matplotlib import pyplot as plt
 from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
@@ -58,14 +59,15 @@ def CT_quantized_piece_to_records(
     df = piece.df.copy()
     for jt in range(n_samples):
         start = jt * sequence_step
+        start_time = df["start"][start]
         finish = start
 
         while df["start"][finish] - df["start"][start] < sequence_duration:
             finish += 1
 
-        part = df.iloc[start:finish]
-        part["start"] = part["start"] - start
-        part["end"] = part["end"] - start
+        part = df.iloc[start:finish].copy()
+        part["start"] = part["start"] - start_time
+        part["end"] = part["end"] - start_time
 
         source = piece.source.copy()
         source |= {"start": start, "finish": finish}
@@ -327,11 +329,19 @@ def main():
         n_start_bins=cfg.quantization.start,
         sequence_duration=cfg.sequence_duration,
     )
+
+    lengths = [len(record["pitch"]) for record in dataset]
+    lengths = sorted(lengths)
+    maximum = max(lengths)
+    print(maximum)
+    plt.plot(lengths)
+    plt.show()
+
     record = pd.DataFrame(dataset[0])
     record = quantizer.apply_quantization(record)
     piece = ff.MidiPiece(record)
     print(piece.df)
-    ff.view.make_piano_roll_video(piece, "test.mp4")
+    # ff.view.make_piano_roll_video(piece, "test.mp4")
 
     from data.tokenizer import MultiTokEncoder, VelocityEncoder
 
@@ -344,7 +354,7 @@ def main():
         src_encoder=src_encoder,
         tgt_encoder=tgt_encoder,
     )
-    print(test_dataset[0])
+    print(test_dataset[77])
 
     tokens = [src_encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
     print("src tokens: ", tokens)
