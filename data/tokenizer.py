@@ -199,7 +199,7 @@ class MultiStartEncoder(MultiTokEncoder):
         return quantized_starts
 
     def tokenize_tgt(self, record: dict) -> list[str]:
-        quantized_starts = self.quantize_start(record["start"])
+        quantized_starts = self.quantize_start(record["start"]) - 1
         tokens = [f"{start_bin:0.0f}s" for start_bin in quantized_starts]
         return tokens
 
