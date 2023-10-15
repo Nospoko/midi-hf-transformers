@@ -211,3 +211,14 @@ class MidiCTQuantizer:
         df["end"] = df.start + df.duration
         df["velocity"] = df.velocity_bin.map(lambda it: self.bin_to_velocity[it])
         return df
+
+    def quantize_piece(self, piece: MidiPiece) -> MidiPiece:
+        # Try not to overwrite anything
+        df = piece.df.copy()
+        source = dict(piece.source) | {"quantized": True}
+
+        # Make the quantization
+        df = self.quantize_frame(df)
+        df = self.apply_quantization(df)
+        out = MidiPiece(df=df, source=source)
+        return out
