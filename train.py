@@ -50,7 +50,7 @@ def main(cfg: DictConfig):
         tokenizer = MultiVelocityEncoder(cfg.dataset.quantization, keys=keys)
     else:
         tokenizer = MultiStartEncoder(quantization_cfg=cfg.dataset.quantization, keys=keys, tgt_bins=cfg.start_bins)
-    pad_idx = tokenizer.token_to_id["<pad>"]
+    pad_idx = tokenizer.token_to_id["<PAD>"]
 
     def collate_fn(batch):
         return collate(batch, cfg.max_padding, pad_idx)
