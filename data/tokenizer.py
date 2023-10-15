@@ -53,7 +53,7 @@ class MultiVelocityEncoder(MultiTokEncoder):
         else:
             self.keys = keys
 
-        self.specials = ["<CLS>", "<pad>"]
+        self.specials = ["<CLS>", "<PAD>"]
 
         self.vocab = list(self.specials)
 
@@ -77,30 +77,30 @@ class MultiVelocityEncoder(MultiTokEncoder):
         )
 
         for pitch in range(21, 109):
-            self.vocab.append(f"{pitch}p")
+            self.vocab.append(f"PITCH-{pitch}")
         for start, duration in time_tokens_product:
-            self.vocab.append(f"{start:0.0f}-{duration:0.0f}")
+            self.vocab.append(f"TIME-{start:0.0f}-{duration:0.0f}")
         # in hf T5 and BART we will use common vocabulary for tgt and src tokens ¯\_(ツ)_/¯
         # luckily, MultiTok is ideal for this
         # (UNLESS we will manually swap a final layer (somehow))
-        # TODO: find out how sharing tokens effects model performance. (1v, 2v, 3v for 3 bins and also for 128 bins)
+        # TODO: find out how sharing tokens effects model performance.
+        #   (VEL-1, VEL-2, VEL-3 for 3 bins and also for 128 bins)
         for velocity in range(128):
-            self.vocab.append(f"{velocity:0.0f}v")
+            self.vocab.append(f"VEL-{velocity:0.0f}")
 
     def tokenize_src(self, record: dict) -> list[str]:
         tokens = []
         n_samples = len(record[self.keys[0]])
         for idx in range(n_samples):
-            # append p and v so that there are no duplicate tokens
-            pitch_token = f"{record[self.keys[0]][idx]:0.0f}p"
-            time_token = f"{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
-            velocity_token = f"{record[self.keys[3]][idx]:0.0f}v"
+            pitch_token = f"PITCH-{record[self.keys[0]][idx]:0.0f}"
+            time_token = f"TIME-{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
+            velocity_token = f"VEL-{record[self.keys[3]][idx]:0.0f}"
             tokens += [pitch_token, time_token, velocity_token]
 
         return tokens
 
     def tokenize_tgt(self, record: dict) -> list[str]:
-        tokens = [f"{velocity:0.0f}v" for velocity in record["velocity"]]
+        tokens = [f"VEL-{velocity:0.0f}" for velocity in record["velocity"]]
         return tokens
 
     def untokenize_src(self, tokens: list[str]) -> pd.DataFrame:
@@ -111,20 +111,21 @@ class MultiVelocityEncoder(MultiTokEncoder):
             tokens = tokens[1:]
 
         for idx, token in enumerate(tokens):
-            if token == "<pad>":
+            if token == "<PAD>":
                 break
             if idx % 3 == 0:
                 # pitch token
                 buff.clear()
-                # [:-1] to clear p letter from a token
-                buff.append(eval(token[:-1]))
+                # [6:] to clear "PITCH-" prefix from a token
+                buff.append(int(token[6:]))
             elif idx % 3 == 1:
                 # time token
-                buff.append(eval(txt) for txt in token.split("-"))
+                # [5:] to clear "TIME-" prefix from the token
+                buff.append(int(txt) for txt in token[5:].split("-"))
             else:
                 # velocity token
-                # [:-1] to clear v letter from the token
-                buff.append(eval(token[:-1]))
+                # [4:] to clear "VEL-" prefix from the token
+                buff.append(int(token[4:]))
                 samples.append(buff)
 
         df = pd.DataFrame(samples, columns=self.keys)
@@ -132,8 +133,8 @@ class MultiVelocityEncoder(MultiTokEncoder):
         return df
 
     def untokenize_tgt(self, tokens: list[str]) -> list[int]:
-        # [:-1] to remove v letter from the end of a token
-        velocities = [int(token[:-1]) for token in tokens if token not in self.specials]
+        # [4:] to clear "VEL-" prefix from the end of a token
+        velocities = [int(token[4:]) for token in tokens if token not in self.specials]
 
         return velocities
 
@@ -148,7 +149,7 @@ class MultiStartEncoder(MultiTokEncoder):
         else:
             self.keys = keys
 
-        self.specials = ["<CLS>", "<pad>"]
+        self.specials = ["<CLS>", "<PAD>"]
 
         self.vocab = list(self.specials)
 
@@ -172,22 +173,21 @@ class MultiStartEncoder(MultiTokEncoder):
         )
 
         for pitch in range(21, 109):
-            self.vocab.append(f"{pitch}p")
+            self.vocab.append(f"PITCH-{pitch}")
         for start, duration in time_tokens_product:
-            self.vocab.append(f"{start:0.0f}-{duration:0.0f}")
+            self.vocab.append(f"TIME-{start:0.0f}-{duration:0.0f}")
         for velocity in range(self.quantization_cfg.velocity):
-            self.vocab.append(f"{velocity:0.0f}v")
+            self.vocab.append(f"VEL-{velocity:0.0f}")
         for start in range(self.tgt_bins):
-            self.vocab.append(f"{start}s")
+            self.vocab.append(f"START-{start}")
 
     def tokenize_src(self, record: dict) -> list[str]:
         tokens = []
         n_samples = len(record[self.keys[0]])
         for idx in range(n_samples):
-            # append p and v so that there are no duplicate tokens
-            pitch_token = f"{record[self.keys[0]][idx]:0.0f}p"
-            time_token = f"{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
-            velocity_token = f"{record[self.keys[3]][idx]:0.0f}v"
+            pitch_token = f"PITCH-{record[self.keys[0]][idx]:0.0f}"
+            time_token = f"TIME-{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
+            velocity_token = f"VEL-{record[self.keys[3]][idx]:0.0f}"
             tokens += [pitch_token, time_token, velocity_token]
 
         return tokens
@@ -195,12 +195,12 @@ class MultiStartEncoder(MultiTokEncoder):
     def quantize_start(self, starts: pd.Series):
         bin_edges = np.linspace(start=0, stop=len(starts), num=self.tgt_bins)
 
-        quantized_starts = np.digitize(starts, bin_edges)
+        quantized_starts = np.digitize(starts, bin_edges) - 1
         return quantized_starts
 
     def tokenize_tgt(self, record: dict) -> list[str]:
-        quantized_starts = self.quantize_start(record["start"]) - 1
-        tokens = [f"{start_bin:0.0f}s" for start_bin in quantized_starts]
+        quantized_starts = self.quantize_start(record["start"])
+        tokens = [f"START-{start_bin:0.0f}" for start_bin in quantized_starts]
         return tokens
 
     def untokenize_src(self, tokens: list[str]) -> pd.DataFrame:
@@ -211,20 +211,21 @@ class MultiStartEncoder(MultiTokEncoder):
             tokens = tokens[1:]
 
         for idx, token in enumerate(tokens):
-            if token == "<pad>":
+            if token == "<PAD>":
                 break
             if idx % 3 == 0:
                 # pitch token
                 buff.clear()
-                # [:-1] to clear p letter from a token
-                buff.append(eval(token[:-1]))
+                # [6:] to clear "PITCH-" prefix from a token
+                buff.append(int(token[6:]))
             elif idx % 3 == 1:
                 # time token
-                buff.append(eval(txt) for txt in token.split("-"))
+                # [5:] to clear "TIME-" prefix from the token
+                buff.append(int(txt) for txt in token[5:].split("-"))
             else:
                 # velocity token
-                # [:-1] to clear v letter from the token
-                buff.append(eval(token[:-1]))
+                # [4:] to clear "VEL-" prefix from the token
+                buff.append(int(token[4:]))
                 samples.append(buff)
 
         df = pd.DataFrame(samples, columns=self.keys)
@@ -232,7 +233,7 @@ class MultiStartEncoder(MultiTokEncoder):
         return df
 
     def untokenize_tgt(self, tokens: list[str]) -> list[int]:
-        # [:-1] to remove v letter from the end of a token
-        starts = [int(token[:-1]) for token in tokens if token not in self.specials]
+        # [6:] to remove "START-" prefix from the end of a token
+        starts = [int(token[6:]) for token in tokens if token not in self.specials]
 
         return starts
