@@ -12,7 +12,7 @@ from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
-from data.tokenizer import MidiEncoder
+from data.tokenizer import MultiTokEncoder
 from data.quantizer import MidiQuantizer, MidiCTQuantizer
 
 
@@ -20,6 +20,9 @@ def build_CT_translation_dataset(
     dataset: Dataset,
     dataset_cfg: DictConfig,
 ) -> Dataset:
+    """
+    Build a translation dataset using start time for quantization.
+    """
     quantizer = MidiCTQuantizer(
         n_duration_bins=dataset_cfg.quantization.duration,
         n_velocity_bins=dataset_cfg.quantization.velocity,
@@ -93,6 +96,9 @@ def build_translation_dataset(
     dataset: Dataset,
     dataset_cfg: DictConfig,
 ) -> Dataset:
+    """
+    Build a dataset using dstart for quantization.
+    """
     # ~90s for giant midi
     quantizer = MidiQuantizer(
         n_dstart_bins=dataset_cfg.quantization.dstart,
@@ -157,7 +163,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        encoder: MidiEncoder,
+        encoder: MultiTokEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg
@@ -205,6 +211,10 @@ def shard_and_build(
     dataset_cache_path: str,
     num_shards: int = 2,
 ) -> Dataset:
+    """
+    Build a translation dataset using dstart quantization, from dataset with musical pieces.
+    Will shard the dataset first and process shards, then concatenate.
+    """
     shard_paths = []
 
     for it in range(num_shards):
@@ -233,6 +243,10 @@ def shard_and_build_CT(
     dataset_cache_path: str,
     num_shards: int = 2,
 ) -> Dataset:
+    """
+    Build a translation dataset using start time quantization, from dataset with musical pieces.
+    Will shard the dataset first and process shards, then concatenate.
+    """
     shard_paths = []
 
     for it in range(num_shards):
@@ -308,7 +322,7 @@ def load_cache_dataset(
 def main():
     dataset_name = "roszcz/maestro-v1-sustain"
     dataset_cfg = {
-        "sequence_duration": 20,
+        "sequence_duration": 5,
         "sequence_step": 10,
         "quantization": {
             "duration": 3,
@@ -342,10 +356,10 @@ def main():
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
-    from data.tokenizer import MultiTokEncoder
+    from data.tokenizer import MultiVelocityEncoder
 
     keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
-    encoder = MultiTokEncoder(cfg.quantization, keys=keys)
+    encoder = MultiVelocityEncoder(cfg.quantization, keys=keys)
     test_dataset = MyTokenizedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,
