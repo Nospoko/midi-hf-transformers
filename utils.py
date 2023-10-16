@@ -1,9 +1,10 @@
-from fortepyan import MidiPiece
-import fortepyan.audio.render as render_audio
 import os
+
+import pretty_midi
 import fortepyan as ff
 import matplotlib.pyplot as plt
-import pretty_midi
+from fortepyan import MidiPiece
+import fortepyan.audio.render as render_audio
 
 
 def piece_av_files(piece: MidiPiece, save_base: str) -> dict:

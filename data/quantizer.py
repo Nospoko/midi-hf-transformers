@@ -123,7 +123,7 @@ class MidiQuantizer:
         return vocab
 
 
-class MidiCTQuantizer:
+class MidiATQuantizer:
     def __init__(
         self,
         n_duration_bins: int = 3,
@@ -138,7 +138,7 @@ class MidiCTQuantizer:
         self._build()
 
     def __rich_repr__(self):
-        yield "MidiCTQuantizer"
+        yield "MidiATQuantizer"
         yield "n_duration_bins", self.n_duration_bins
         yield "n_velocity_bins", self.n_velocity_bins
         yield "n_start_bins", self.n_start_bins
