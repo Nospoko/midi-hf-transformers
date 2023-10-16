@@ -6,13 +6,12 @@ from fortepyan import MidiPiece
 from datasets import load_dataset
 
 from utils import piece_av_files
-from data.quantizer import MidiQuantizer, MidiCTQuantizer
-from data.tokenizer import MultiVelocityEncoder
+from data.quantizer import MidiQuantizer, MidiATQuantizer
 
 
-def CT_tokenization_review_dashboard():
+def AT_tokenization_review_dashboard():
     seq_one = """
-    ## CT Quantization
+    ## Absolute Time Quantization
     New quantization method allows you to quantize start time without calculating dstart value first.
     `sequence_duration` is maximum distance between earliest and latest start in a musical sequence. This length
     is then divided linearly into n_start_bins sections.
@@ -27,7 +26,7 @@ def CT_tokenization_review_dashboard():
     n_velocity_bins = st.number_input(label="n_velocity_bins", value=3)
     sequence_duration = st.number_input(label="sequence_duration", value=5)
 
-    quantizer = MidiCTQuantizer(
+    quantizer = MidiATQuantizer(
         n_start_bins=n_start_bins,
         n_duration_bins=n_duration_bins,
         n_velocity_bins=n_velocity_bins,
@@ -62,7 +61,7 @@ def CT_tokenization_review_dashboard():
 
         av_dir = "tmp/dashboard/common"
         bins = f"{n_start_bins}-{n_duration_bins}-{n_velocity_bins}"
-        save_name = f"ct-{dataset_name}-{split}-{idx}".replace("/", "_")
+        save_name = f"at-{dataset_name}-{split}-{idx}".replace("/", "_")
 
         save_base_gt = os.path.join(av_dir, f"{save_name}")
         gt_paths = piece_av_files(piece, save_base=save_base_gt)
@@ -83,8 +82,8 @@ def CT_tokenization_review_dashboard():
     seq_two = """
     ## MultiTokEncoder
     T5 models have equal input and output layer sizes. This means they are using the same vocabulary for source and
-    target encoding. 
-    
+    target encoding.
+
     MultiTokEncoders have methods for tokenizing records to both source and target sequences.
     `tokenize_src` will output sequence of tokens, e.g. for a dataframe of quantized notes:
     |pitch|start_bin|duration_bin|velocity_bin|velocity|
@@ -92,20 +91,20 @@ def CT_tokenization_review_dashboard():
     |78|155|3|7|95|
     |66|157|6|5|62|
     |68|158|5|2|20|
-    
+
     It will output a sequence of tokens:
-    ``` 
+    ```
     ["<PITCH-78>", "<TIME-155-3>", "<VEL-7>", "<PITCH-66>", \
     "<TIME-157-6>", "<VEL-5>", "<PITCH-68>", "<TIME-158-5>", "<VEL-2>"]
     ```
-    So three tokens for each note. When untokenizing the tokenizer asserts tokens are in correct order 
+    So three tokens for each note. When untokenizing the tokenizer asserts tokens are in correct order
     (pitch, time, velocity)
-    
+
     `MultiVelocityEncoder`'s `tokenize_tgt` will output from the same dataframe:
     ```
     ["<VEL-95>", "<VEL-62>", "<VEL-20>"]
     ```
-    `MultiStartEncoder`'s `tokenize_tgt` will work similarly, but it will quantize `start` into `start_bins` first. 
+    `MultiStartEncoder`'s `tokenize_tgt` will work similarly, but it will quantize `start` into `start_bins` first.
     """
 
     st.markdown(seq_two)
@@ -167,7 +166,7 @@ def tokenization_review_dashboard():
     if display_mode == "classic":
         classic_tokenization_review_dashboard()
     else:
-        CT_tokenization_review_dashboard()
+        AT_tokenization_review_dashboard()
 
 
 if __name__ == "__main__":

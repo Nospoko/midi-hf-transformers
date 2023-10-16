@@ -13,17 +13,17 @@ from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
 from data.tokenizer import MultiTokEncoder
-from data.quantizer import MidiQuantizer, MidiCTQuantizer
+from data.quantizer import MidiQuantizer, MidiATQuantizer
 
 
-def build_CT_translation_dataset(
+def build_AT_translation_dataset(
     dataset: Dataset,
     dataset_cfg: DictConfig,
 ) -> Dataset:
     """
     Build a translation dataset using start time for quantization.
     """
-    quantizer = MidiCTQuantizer(
+    quantizer = MidiATQuantizer(
         n_duration_bins=dataset_cfg.quantization.duration,
         n_velocity_bins=dataset_cfg.quantization.velocity,
         n_start_bins=dataset_cfg.quantization.start,
@@ -42,7 +42,7 @@ def build_CT_translation_dataset(
 
     chopped_sequences = []
     for it, piece in tqdm(enumerate(quantized_pieces), total=len(quantized_pieces)):
-        chopped_sequences += CT_quantized_piece_to_records(
+        chopped_sequences += AT_quantized_piece_to_records(
             piece=piece,
             sequence_duration=dataset_cfg.sequence_duration,
             sequence_step=dataset_cfg.sequence_step,
@@ -52,7 +52,7 @@ def build_CT_translation_dataset(
     return new_dataset
 
 
-def CT_quantized_piece_to_records(
+def AT_quantized_piece_to_records(
     piece: ff.MidiPiece,
     sequence_duration: int,
     sequence_step: int,
@@ -237,14 +237,14 @@ def shard_and_build(
     return processed_dataset
 
 
-def shard_and_build_CT(
+def shard_and_build_AT(
     dataset: Dataset,
     dataset_cfg: DictConfig,
     dataset_cache_path: str,
     num_shards: int = 2,
 ) -> Dataset:
     """
-    Build a translation dataset using start time quantization, from dataset with musical pieces.
+    Build a translation dataset using absolute start time quantization, from dataset with musical pieces.
     Will shard the dataset first and process shards, then concatenate.
     """
     shard_paths = []
@@ -255,7 +255,7 @@ def shard_and_build_CT(
         dataset_shard = dataset.shard(num_shards=num_shards, index=it)
         print(f"Processing shard {it} of {num_shards} with {len(dataset_shard)} records.")
 
-        processed_shard = build_CT_translation_dataset(dataset_shard, dataset_cfg=dataset_cfg)
+        processed_shard = build_AT_translation_dataset(dataset_shard, dataset_cfg=dataset_cfg)
         processed_shard.save_to_disk(path)
         shard_paths.append(path)
 
@@ -306,7 +306,7 @@ def load_cache_dataset(
             dataset_cache_path=dataset_cache_path,
         )
     else:
-        translation_dataset = shard_and_build_CT(
+        translation_dataset = shard_and_build_AT(
             dataset=midi_dataset,
             dataset_cfg=dataset_cfg,
             num_shards=num_shards,
@@ -334,7 +334,7 @@ def main():
     cfg = OmegaConf.create(dataset_cfg)
     dataset = load_cache_dataset(cfg, dataset_name, split="test")
 
-    quantizer = MidiCTQuantizer(
+    quantizer = MidiATQuantizer(
         n_duration_bins=cfg.quantization.duration,
         n_velocity_bins=cfg.quantization.velocity,
         n_start_bins=cfg.quantization.start,
