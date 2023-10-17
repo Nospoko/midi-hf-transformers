@@ -1,9 +1,11 @@
 import os
 
+import torch
 import pretty_midi
 import fortepyan as ff
 import matplotlib.pyplot as plt
 from fortepyan import MidiPiece
+from omegaconf import DictConfig
 import fortepyan.audio.render as render_audio
 
 
@@ -38,3 +40,26 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
         "pianoroll_path": pianoroll_path,
     }
     return paths
+
+
+def vocab_size(cfg: DictConfig):
+    # 88 piano keys
+    size = 88
+    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
+    # time tokens
+    size += values[0] * values[1]
+    # velocity tokens
+    if cfg.target == "velocity":
+        size += 128
+        return size
+    size += values[2]
+
+    if cfg.target == "start":
+        size += cfg.start_bins
+    return size
+
+
+def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor:
+    labels = out.argmax(1).to(float)
+    # average distance between label and target
+    return torch.dist(labels, tgt.to(float), p=1) / len(labels)
