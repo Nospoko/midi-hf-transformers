@@ -9,10 +9,11 @@ from tqdm import tqdm
 from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
+from torch.optim.lr_scheduler import LambdaLR
 from transformers import T5ForConditionalGeneration
 
-from utils import calculate_average_distance
 from data.dataset import MyTokenizedMidiDataset
+from utils import learning_rate_schedule, calculate_average_distance
 
 
 def train_model(
@@ -41,8 +42,11 @@ def train_model(
         collate_fn=collate_fn,
         num_workers=8,
     )
-    # TODO: Learning rate scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.train.base_lr, betas=(0.9, 0.98), eps=1e-9)
+    lr_scheduler = LambdaLR(
+        optimizer=optimizer,
+        lr_lambda=lambda step: learning_rate_schedule(step, warmup=cfg.train.warmup),
+    )
     best_test_loss = float("inf")
     for epoch in range(cfg.train.num_epochs):
         model.train()
@@ -53,6 +57,7 @@ def train_model(
             dataloader=train_dataloader,
             model=model,
             optimizer=optimizer,
+            lr_scheduler=lr_scheduler,
             pad_idx=pad_idx,
             accum_iter=cfg.train.accum_iter,
             log=cfg.log,
@@ -145,6 +150,7 @@ def train_epoch(
     dataloader: Iterable,
     model: T5ForConditionalGeneration,
     optimizer: torch.optim.Optimizer,
+    lr_scheduler: LambdaLR,
     pad_idx: int = 1,
     accum_iter: int = 1,
     log_frequency: int = 10,
@@ -180,7 +186,7 @@ def train_epoch(
         loss = outputs.loss
         loss.backward()
 
-        dist = calculate_average_distance(out_rearranged, target)
+        dist = calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
 
         # Update the model parameters and optimizer gradients every `accum_iter` iterations
         if it % accum_iter == 0 or it == steps - 1:
@@ -188,6 +194,9 @@ def train_epoch(
             optimizer.zero_grad(set_to_none=True)
             n_accum += 1
         it += 1
+
+        # Update learning learning_rate_schedule lr_scheduler
+        lr_scheduler.step()
 
         # Update loss and token counts
         loss_item = loss.item()
@@ -247,7 +256,7 @@ def val_epoch(
         total_loss += loss.item()
         total_tokens += n_tokens
         tokens += n_tokens
-        total_dist += calculate_average_distance(out_rearranged, target)
+        total_dist += calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
 
     # Return average loss over all tokens and updated train state
     return total_loss / len(dataloader), total_dist / len(dataloader)

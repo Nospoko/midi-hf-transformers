@@ -1,4 +1,5 @@
 import os
+from math import sqrt
 
 import torch
 import pretty_midi
@@ -59,7 +60,13 @@ def vocab_size(cfg: DictConfig):
     return size
 
 
-def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor:
+def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: int = 1) -> torch.Tensor:
     labels = out.argmax(1).to(float)
+    labels = labels[labels != pad_idx]
+    tgt = tgt[tgt != pad_idx]
     # average distance between label and target
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
+
+
+def learning_rate_schedule(step: int, warmup: int):
+    return 1 / sqrt(max(step, warmup))

@@ -2,7 +2,8 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 3e-4
+  base_lr: 1
+  warmup: 4000
 
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
