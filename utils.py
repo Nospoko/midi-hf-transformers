@@ -46,6 +46,8 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
 def vocab_size(cfg: DictConfig):
     # 88 piano keys
     size = 88
+    # 2 special tokens - <CLS> and <PAD>
+    size += 2
     values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
     # time tokens
     size += values[0] * values[1]
