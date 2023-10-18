@@ -2,7 +2,6 @@ import time
 from typing import Iterable
 
 import torch
-import wandb
 import einops
 import torch.nn as nn
 from tqdm import tqdm
@@ -12,6 +11,7 @@ from omegaconf import OmegaConf, DictConfig
 from torch.optim.lr_scheduler import LambdaLR
 from transformers import T5ForConditionalGeneration
 
+import wandb
 from data.dataset import MyTokenizedMidiDataset
 from utils import learning_rate_schedule, calculate_average_distance
 

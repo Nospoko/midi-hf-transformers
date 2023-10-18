@@ -1,8 +1,8 @@
 import hydra
-import wandb
 from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
+import wandb
 from utils import vocab_size
 from training_utils import train_model
 from data.tokenizer import MultiStartEncoder, MultiVelocityEncoder
@@ -19,6 +19,9 @@ def initialize_wandb(cfg: DictConfig):
 
 @hydra.main(version_base=None, config_path="configs", config_name="T5velocity")
 def main(cfg: DictConfig):
+    if cfg.log:
+        initialize_wandb(cfg)
+
     keys = ["pitch"] + [f"{key}_bin" for key in cfg.dataset.quantization]
     if cfg.target == "velocity":
         tokenizer = MultiVelocityEncoder(cfg.dataset.quantization, keys=keys)
