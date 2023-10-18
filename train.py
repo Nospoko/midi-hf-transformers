@@ -1,12 +1,9 @@
 import hydra
 from omegaconf import OmegaConf, DictConfig
-from transformers import T5Config, T5ForConditionalGeneration
 
 import wandb
-from utils import vocab_size
-from training_utils import train_model
-from data.tokenizer import MultiStartEncoder, MultiVelocityEncoder
-from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
+from data.dataset import load_cache_dataset
+from pipelines.T5.main import main as t5_training
 
 
 def initialize_wandb(cfg: DictConfig):
@@ -22,19 +19,6 @@ def main(cfg: DictConfig):
     if cfg.log:
         initialize_wandb(cfg)
 
-    keys = ["pitch"] + [f"{key}_bin" for key in cfg.dataset.quantization]
-    if cfg.target == "velocity":
-        tokenizer = MultiVelocityEncoder(cfg.dataset.quantization, keys=keys)
-    else:
-        tokenizer = MultiStartEncoder(quantization_cfg=cfg.dataset.quantization, keys=keys, tgt_bins=cfg.start_bins)
-
-    config = T5Config(
-        vocab_size=vocab_size(cfg),
-        decoder_start_token_id=0,
-        use_cache=False,
-    )
-    model = T5ForConditionalGeneration(config)
-
     train_translation_dataset = load_cache_dataset(
         dataset_cfg=cfg.dataset,
         dataset_name=cfg.dataset_name,
@@ -45,23 +29,8 @@ def main(cfg: DictConfig):
         dataset_name="roszcz/maestro-v1-sustain",
         split="validation+test",
     )
-
-    train_dataset = MyTokenizedMidiDataset(
-        dataset=train_translation_dataset,
-        dataset_cfg=cfg.dataset,
-        encoder=tokenizer,
-    )
-    val_dataset = MyTokenizedMidiDataset(
-        dataset=val_translation_dataset,
-        dataset_cfg=cfg.dataset,
-        encoder=tokenizer,
-    )
-    train_model(
-        model=model,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        cfg=cfg,
-    )
+    if cfg.model_name == "T5":
+        t5_training(cfg, train_translation_dataset, val_translation_dataset)
 
 
 if __name__ == "__main__":

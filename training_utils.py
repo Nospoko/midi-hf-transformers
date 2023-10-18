@@ -9,7 +9,6 @@ from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 from torch.optim.lr_scheduler import LambdaLR
-from transformers import T5ForConditionalGeneration
 
 import wandb
 from data.dataset import MyTokenizedMidiDataset
@@ -17,7 +16,7 @@ from utils import learning_rate_schedule, calculate_average_distance
 
 
 def train_model(
-    model: T5ForConditionalGeneration,
+    model: nn.Module,
     train_dataset: MyTokenizedMidiDataset,
     val_dataset: MyTokenizedMidiDataset,
     cfg: DictConfig,
@@ -148,7 +147,7 @@ def save_checkpoint(
 
 def train_epoch(
     dataloader: Iterable,
-    model: T5ForConditionalGeneration,
+    model: nn.Module,
     optimizer: torch.optim.Optimizer,
     lr_scheduler: LambdaLR,
     pad_idx: int = 1,
@@ -225,7 +224,7 @@ def train_epoch(
 @torch.no_grad()
 def val_epoch(
     dataloader: Iterable,
-    model: T5ForConditionalGeneration,
+    model: nn.Module,
     pad_idx: int = 1,
     device: str = "cpu",
 ) -> tuple[float, float]:

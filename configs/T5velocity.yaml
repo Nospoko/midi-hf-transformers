@@ -5,6 +5,7 @@ train:
   base_lr: 1
   warmup: 4000
 
+model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
 max_padding: 180
