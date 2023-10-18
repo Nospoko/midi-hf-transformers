@@ -237,8 +237,7 @@ def val_epoch(
     for batch in tqdm(dataloader):
         src = batch["source_token_ids"].to(device)
         tgt = batch["target_token_ids"].to(device)
-        tgt_y = tgt[:, 1:]
-        n_tokens = tgt_y.numel()
+        n_tokens = tgt.numel()
         tgt[tgt == pad_idx] = -100
         attention_mask = src != pad_idx
 
@@ -250,7 +249,7 @@ def val_epoch(
         out = outputs.logits
 
         out_rearranged = einops.rearrange(out, "b n d -> (b n) d")
-        target = einops.rearrange(tgt_y, "b n -> (b n)")
+        target = einops.rearrange(tgt, "b n -> (b n)")
         loss = outputs.loss
 
         total_loss += loss.item()
