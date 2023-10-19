@@ -277,7 +277,7 @@ def load_cache_dataset(
 ) -> Dataset:
     # Prepare caching hash
     config_hash = hashlib.sha256()
-    config_string = json.dumps(OmegaConf.to_container(dataset_cfg)) + dataset_name
+    config_string = json.dumps(OmegaConf.to_container(dataset_cfg)) + dataset_name + split
     config_hash.update(config_string.encode())
     config_hash = config_hash.hexdigest()
 
