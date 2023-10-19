@@ -10,6 +10,8 @@ dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
 max_padding: 180
 
+overfit: False
+
 dataset:
   sequence_duration: 5
   sequence_step: 2

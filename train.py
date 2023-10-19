@@ -19,15 +19,19 @@ def main(cfg: DictConfig):
     if cfg.log:
         initialize_wandb(cfg)
 
+    if cfg.overfit:
+        split_slice = "[:1]"
+    else:
+        split_slice = ""
     train_translation_dataset = load_cache_dataset(
         dataset_cfg=cfg.dataset,
         dataset_name=cfg.dataset_name,
-        split="train",
+        split="train" + split_slice,
     )
     val_translation_dataset = load_cache_dataset(
         dataset_cfg=cfg.dataset,
         dataset_name="roszcz/maestro-v1-sustain",
-        split="validation+test",
+        split=f"validation{split_slice}+test{split_slice}",
     )
     if cfg.model_name == "T5":
         t5_training(cfg, train_translation_dataset, val_translation_dataset)

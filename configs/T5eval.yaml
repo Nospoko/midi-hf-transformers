@@ -1,0 +1,6 @@
+run_name: ""
+
+split: test
+dataset_name: roszcz/maestro-v1-sustain
+device: cpu
+idx: 26

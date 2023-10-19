@@ -11,6 +11,8 @@ target: start
 start_bins: 400
 max_padding: 180
 
+overfit: False
+
 dataset:
   sequence_duration: 5
   sequence_step: 2
