@@ -25,7 +25,7 @@ def train_model(
     pad_idx = train_dataset.encoder.token_to_id["<PAD>"]
 
     def collate_fn(batch):
-        return collate(batch, cfg.max_padding, pad_idx)
+        return collate(batch, pad_idx)
 
     train_dataloader = DataLoader(
         dataset=train_dataset,
@@ -41,7 +41,7 @@ def train_model(
         collate_fn=collate_fn,
         num_workers=8,
     )
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.train.base_lr, betas=(0.9, 0.98), eps=1e-9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.train.base_lr)
     lr_scheduler = LambdaLR(
         optimizer=optimizer,
         lr_lambda=lambda step: learning_rate_schedule(step, warmup=cfg.train.warmup),
@@ -97,11 +97,12 @@ def train_model(
     return model
 
 
-def collate(batch, max_padding: int = 128, pad_idx: int = 1):
+def collate(batch, pad_idx: int = 1):
     """
     Add padding to a batch of records.
     """
     src_list, tgt_list = [], []
+    max_padding = max([len(record["source_token_ids"]) for record in batch])
     for record in batch:
         src = record["source_token_ids"]
         tgt = record["target_token_ids"]
