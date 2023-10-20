@@ -61,6 +61,7 @@ def main(cfg: DictConfig):
 
     total_dist = 0
     pbar = tqdm(val_dataset)
+    it = 0
 
     for record in pbar:
         input_ids = record["source_token_ids"].unsqueeze(0)
@@ -70,7 +71,7 @@ def main(cfg: DictConfig):
         out = out[: len(record["target_token_ids"])]
         dist = torch.dist(out.to(float), record["target_token_ids"].to(float)).data
         total_dist += dist
-        pbar.set_description(f"dist: {dist:0.3f}")
+        pbar.set_description(f"avg_dist: {total_dist / it:0.3f}")
     print(total_dist / len(val_dataset))
 
 
