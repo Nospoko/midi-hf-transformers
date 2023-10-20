@@ -30,30 +30,27 @@ def build_AT_translation_dataset(
         sequence_duration=dataset_cfg.sequence_duration,
     )
 
-    quantized_pieces = []
+    sequences = []
 
     for it, record in tqdm(enumerate(dataset), total=len(dataset)):
         piece = ff.MidiPiece.from_huggingface(record)
-        qpiece = quantizer.inject_quantization_features(piece)
 
         # We want to get back to the original recording easily
-        qpiece.source |= {"base_record_id": it, "dataset_name": dataset.info.description}
-        quantized_pieces.append(qpiece)
-
-    chopped_sequences = []
-    for it, piece in tqdm(enumerate(quantized_pieces), total=len(quantized_pieces)):
-        chopped_sequences += AT_quantized_piece_to_records(
+        piece.source |= {"base_record_id": it, "dataset_name": dataset.info.description}
+        sequences += piece_to_AT_records(
             piece=piece,
+            quantizer=quantizer,
             sequence_duration=dataset_cfg.sequence_duration,
             sequence_step=dataset_cfg.sequence_step,
         )
 
-    new_dataset = Dataset.from_list(chopped_sequences)
+    new_dataset = Dataset.from_list(sequences)
     return new_dataset
 
 
-def AT_quantized_piece_to_records(
+def piece_to_AT_records(
     piece: ff.MidiPiece,
+    quantizer: MidiATQuantizer,
     sequence_duration: int,
     sequence_step: int,
 ):
@@ -71,6 +68,7 @@ def AT_quantized_piece_to_records(
         part = df.iloc[start:finish].copy()
         part["start"] = part["start"] - start_time
         part["end"] = part["end"] - start_time
+        part = quantizer.quantize_frame(part)
 
         source = piece.source.copy()
         source |= {"start": start, "finish": finish}
@@ -365,7 +363,7 @@ def main():
         dataset_cfg=cfg,
         encoder=encoder,
     )
-    print(test_dataset[77])
+    print(test_dataset[90])
 
     tokens = [encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
     print("src tokens: ", tokens)
