@@ -2,6 +2,7 @@ import glob
 
 import hydra
 import torch
+from tqdm import tqdm
 from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
@@ -58,10 +59,19 @@ def main(cfg: DictConfig):
         encoder=tokenizer,
     )
 
-    record = val_dataset[cfg.idx]
-    input_ids = record["source_token_ids"].unsqueeze(0)
-    out = model.generate(input_ids, max_length=train_cfg.max_padding)
-    print(input_ids, "\n", out, "\n", record["target_token_ids"])
+    total_dist = 0
+    pbar = tqdm(val_dataset)
+
+    for record in pbar:
+        input_ids = record["source_token_ids"].unsqueeze(0)
+        sequence_len = len(record["source_token_ids"]) // 3 + 1
+        out = model.generate(input_ids, max_length=sequence_len)
+
+        out = out[: len(record["target_token_ids"])]
+        dist = torch.dist(out.to(float), record["target_token_ids"].to(float)).data
+        total_dist += dist
+        pbar.set_description(f"dist: {dist:0.3f}")
+    print(total_dist / len(val_dataset))
 
 
 if __name__ == "__main__":
