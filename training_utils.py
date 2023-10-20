@@ -171,6 +171,7 @@ def train_epoch(
         tgt = batch["target_token_ids"].to(device)
         n_tokens = tgt.numel()
         tgt[tgt == pad_idx] = -100
+        tgt[tgt == 0] = -100
         attention_mask = src != pad_idx
 
         outputs = model(

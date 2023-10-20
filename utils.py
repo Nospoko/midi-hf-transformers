@@ -64,8 +64,17 @@ def vocab_size(cfg: DictConfig):
 
 def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: int = 1) -> torch.Tensor:
     labels = out.argmax(1).to(float)
+    tgt[tgt == -100] = pad_idx
+
+    # remove special tokens
     labels = labels[labels != pad_idx]
     tgt = tgt[tgt != pad_idx]
+    # 0 is <CLS> token id
+    labels = labels[labels != 0]
+    tgt = tgt[tgt != 0]
+    # make labels fixed length same as target
+    labels = labels[: len(tgt)]
+
     # average distance between label and target
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
 
