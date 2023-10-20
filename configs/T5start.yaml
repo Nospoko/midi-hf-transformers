@@ -2,7 +2,7 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 1
+  base_lr: 0.1
   warmup: 4000
 
 model_name: T5
