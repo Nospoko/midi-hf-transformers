@@ -121,7 +121,7 @@ class MultiVelocityEncoder(MultiTokEncoder):
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
-                buff.append(int(txt) for txt in token[5:].split("-"))
+                buff += [int(txt) for txt in token[5:].split("-")]
             else:
                 # velocity token
                 # [4:] to clear "VEL-" prefix from the token
@@ -221,7 +221,7 @@ class MultiStartEncoder(MultiTokEncoder):
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
-                buff.append(int(txt) for txt in token[5:].split("-"))
+                buff += [int(txt) for txt in token[5:].split("-")]
             else:
                 # velocity token
                 # [4:] to clear "VEL-" prefix from the token

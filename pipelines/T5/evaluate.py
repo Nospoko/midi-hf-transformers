@@ -65,7 +65,7 @@ def main(cfg: DictConfig):
 
     for record in pbar:
         it += 1
-        
+
         input_ids = record["source_token_ids"].unsqueeze(0)
         sequence_len = len(record["source_token_ids"]) // 3 + 1
         out = model.generate(input_ids, max_length=sequence_len)
