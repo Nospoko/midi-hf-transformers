@@ -21,11 +21,17 @@ def main(
 
     model = T5ForConditionalGeneration(config)
 
-    keys = ["pitch"] + [f"{key}_bin" for key in cfg.dataset.quantization]
     if cfg.target == "velocity":
-        tokenizer = MultiVelocityEncoder(cfg.dataset.quantization, keys=keys)
+        tokenizer = MultiVelocityEncoder(
+            quantization_cfg=cfg.dataset.quantization,
+            time_quantization_method=cfg.time_quantization_method,
+        )
     else:
-        tokenizer = MultiStartEncoder(quantization_cfg=cfg.dataset.quantization, keys=keys, tgt_bins=cfg.start_bins)
+        tokenizer = MultiStartEncoder(
+            quantization_cfg=cfg.dataset.quantization,
+            time_quantization_method=cfg.time_quantization_method,
+            tgt_bins=cfg.start_bins,
+        )
 
     train_dataset = MyTokenizedMidiDataset(
         dataset=train_translation_dataset,

@@ -12,6 +12,8 @@ seed: 26
 
 overfit: False
 masking_probability: 0.3
+
+time_quantization_method: start
 dataset:
   sequence_duration: 2
   sequence_step: 2

@@ -22,8 +22,11 @@ def main(
     model = BartForConditionalGeneration(config)
     print(model.num_parameters())
 
-    keys = ["pitch"] + [f"{key}_bin" for key in cfg.dataset.quantization]
-    tokenizer = MaskedMidiEncoder(cfg.dataset.quantization, keys=keys, masking_probability=cfg.masking_probability)
+    tokenizer = MaskedMidiEncoder(
+        quantization_cfg=cfg.dataset.quantization,
+        time_quantization_method=cfg.time_quantization_method,
+        masking_probability=cfg.masking_probability,
+    )
 
     train_dataset = MyTokenizedMidiDataset(
         dataset=train_translation_dataset,
