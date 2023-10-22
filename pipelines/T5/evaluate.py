@@ -45,11 +45,14 @@ def main(cfg: DictConfig):
 
     keys = ["pitch"] + [f"{key}_bin" for key in train_cfg.dataset.quantization]
     if train_cfg.target == "velocity":
-        tokenizer = MultiVelocityEncoder(train_cfg.dataset.quantization, keys=keys)
+        tokenizer = MultiVelocityEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
     else:
         tokenizer = MultiStartEncoder(
             quantization_cfg=train_cfg.dataset.quantization,
-            keys=keys,
+            time_quantization_method=train_cfg.time_quantization_method,
             tgt_bins=train_cfg.start_bins,
         )
 
