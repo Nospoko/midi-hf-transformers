@@ -143,14 +143,6 @@ def model_predictions_review(
         generated_velocity = generated_velocity.squeeze(0)
         generated_velocity = tokenizer.decode_tgt(generated_velocity)
 
-        # Just pitches and quantization n_bins of the source
-        src_tokens = [dataset.encoder.vocab[token_id] for token_id in src_token_ids]
-        source_df = dataset.encoder.untokenize_src(src_tokens)
-
-        quantized_notes = quantizer.apply_quantization(source_df)
-        quantized_piece = MidiPiece(quantized_notes)
-        quantized_piece.time_shift(-quantized_piece.df.start.min())
-
         # TODO start here
         # Reconstruct the sequence as recorded
         midi_columns = ["pitch", "start", "end", "duration", "velocity"]
@@ -159,45 +151,32 @@ def model_predictions_review(
         true_piece.time_shift(-true_piece.df.start.min())
 
         pred_piece_df = true_piece.df.copy()
-        quantized_vel_df = true_piece.df.copy()
 
         # change untokenized velocities to model predictions
         pred_piece_df["velocity"] = generated_velocity
         pred_piece_df["velocity"] = pred_piece_df["velocity"].fillna(0)
 
-        quantized_vel_df["velocity"] = quantized_piece.df["velocity"].copy()
-
         # create quantized piece with predicted velocities
         pred_piece = MidiPiece(pred_piece_df)
-        quantized_vel_piece = MidiPiece(quantized_vel_df)
 
         pred_piece.source = true_piece.source.copy()
-        quantized_vel_piece.source = true_piece.source.copy()
 
         # create files
         true_save_base = os.path.join(model_dir, f"true_{record_id}")
         true_piece_paths = piece_av_files(piece=true_piece, save_base=true_save_base)
-
-        qv_save_base = os.path.join(model_dir, f"qv_{record_id}")
-        qv_paths = piece_av_files(piece=quantized_vel_piece, save_base=qv_save_base)
 
         predicted_save_base = os.path.join(model_dir, f"predicted_{record_id}")
         predicted_paths = piece_av_files(piece=pred_piece, save_base=predicted_save_base)
 
         # create a dashboard
         st.json(record_source)
-        cols = st.columns(3)
+        cols = st.columns(2)
         with cols[0]:
             # Unchanged
             st.image(true_piece_paths["pianoroll_path"])
             st.audio(true_piece_paths["mp3_path"])
 
         with cols[1]:
-            # Q.velocity ?
-            st.image(qv_paths["pianoroll_path"])
-            st.audio(qv_paths["mp3_path"])
-
-        with cols[2]:
             # Predicted
             st.image(predicted_paths["pianoroll_path"])
             st.audio(predicted_paths["mp3_path"])

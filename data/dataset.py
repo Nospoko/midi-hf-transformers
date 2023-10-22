@@ -357,7 +357,8 @@ def main():
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
     keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
-    encoder = MaskedMidiEncoder(cfg.quantization, keys, 0.3)
+    # this is for testing and debugging btw
+    encoder = MaskedMidiEncoder(cfg.quantization, keys=keys, masking_probability=0.3)
     test_dataset = MyTokenizedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,

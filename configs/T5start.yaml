@@ -24,7 +24,7 @@ dataset:
 
 device: "cpu"
 
-log: False
+log: True
 log_frequency: 10
 run_name: midi-T5-${now:%Y-%m-%d-%H-%M}
 project: "midi-hf-transformer"
