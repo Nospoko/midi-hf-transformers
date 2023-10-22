@@ -142,7 +142,6 @@ def model_predictions_review(
         generated_velocity = model.generate(src_token_ids.unsqueeze(0), max_length=max_length)
         generated_velocity = generated_velocity.squeeze(0)
         generated_velocity = tokenizer.decode_tgt(generated_velocity)
-        print(generated_velocity)
 
         # Just pitches and quantization n_bins of the source
         src_tokens = [dataset.encoder.vocab[token_id] for token_id in src_token_ids]
