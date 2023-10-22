@@ -43,7 +43,6 @@ def main(cfg: DictConfig):
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval().to(cfg.device)
 
-    keys = ["pitch"] + [f"{key}_bin" for key in train_cfg.dataset.quantization]
     if train_cfg.target == "velocity":
         tokenizer = MultiVelocityEncoder(
             quantization_cfg=train_cfg.dataset.quantization,

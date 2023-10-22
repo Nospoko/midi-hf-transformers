@@ -17,6 +17,11 @@ def main(
         vocab_size=vocab_size(cfg),
         decoder_start_token_id=0,
         use_cache=False,
+        d_model=cfg.model.d_model,
+        d_kv=cfg.model.d_kv,
+        d_ff=cfg.model.d_ff,
+        num_layers=cfg.model.num_layers,
+        num_heads=cfg.model.num_heads,
     )
 
     model = T5ForConditionalGeneration(config)

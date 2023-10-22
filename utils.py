@@ -81,3 +81,7 @@ def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: in
 
 def learning_rate_schedule(step: int, warmup: int):
     return 1 / sqrt(max(step, warmup))
+
+
+def debug_lr_schedule(step: int):
+    return 1e-4 * 10 ** ((step // 10) / 20)
