@@ -1,9 +1,11 @@
 import hydra
+import numpy as np
 from omegaconf import OmegaConf, DictConfig
 
 import wandb
 from data.dataset import load_cache_dataset
 from pipelines.T5.main import main as t5_training
+from pipelines.BART.main import main as bart_training
 
 
 def initialize_wandb(cfg: DictConfig):
@@ -23,6 +25,7 @@ def main(cfg: DictConfig):
         split_slice = "[:1]"
     else:
         split_slice = ""
+    np.random.seed(cfg.seed)
     train_translation_dataset = load_cache_dataset(
         dataset_cfg=cfg.dataset,
         dataset_name=cfg.dataset_name,
@@ -35,6 +38,8 @@ def main(cfg: DictConfig):
     )
     if cfg.model_name == "T5":
         t5_training(cfg, train_translation_dataset, val_translation_dataset)
+    if cfg.model_name == "BART":
+        bart_training(cfg, train_translation_dataset, val_translation_dataset)
 
 
 if __name__ == "__main__":

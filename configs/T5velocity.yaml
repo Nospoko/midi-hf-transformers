@@ -8,7 +8,7 @@ train:
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
-max_padding: 180
+seed: 26
 
 overfit: False
 

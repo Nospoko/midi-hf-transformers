@@ -9,7 +9,7 @@ model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: start
 start_bins: 400
-max_padding: 180
+seed: 26
 
 overfit: False
 
