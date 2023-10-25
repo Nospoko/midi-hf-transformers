@@ -19,7 +19,7 @@ dataset:
   sequence_step: 2
 
   quantization:
-    start: 400
+    start: 20
     duration: 3
     velocity: 3
 
