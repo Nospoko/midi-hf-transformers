@@ -43,6 +43,8 @@ class MaskedMidiEncoder:
 
         return src_tokens, tgt_tokens
 
+    # encode_src and encode_tgt implementations for compatibility with MyTokenizedMidiDataset
+    # note that they are only working if there is a call to encode_src first
     def encode_src(self, record: dict) -> list[int]:
         src_tokens, tgt_tokens = self.mask_record(record)
         mask_token_id = self.token_to_id["<MASK>"]
