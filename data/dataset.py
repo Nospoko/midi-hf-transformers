@@ -17,6 +17,7 @@ from data.quantizer import MidiQuantizer, MidiATQuantizer
 from data.multitokencoder import MultiTokEncoder
 from data.maskedmidiencoder import MaskedMidiEncoder
 
+
 def build_AT_translation_dataset(
     dataset: Dataset,
     dataset_cfg: DictConfig,
@@ -162,7 +163,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        encoder: MultiTokEncoder | MidiEncoder,
+        encoder: MultiTokEncoder | MidiEncoder | MaskedMidiEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg
@@ -357,8 +358,10 @@ def main():
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
+    from data.multitokencoder import MultiVelocityEncoder
     # this is for testing and debugging btw
-    encoder = MaskedMidiEncoder(cfg.quantization, time_quantization_method="start", masking_probability=0.3)
+    base_encoder = MultiVelocityEncoder(cfg.quantization, time_quantization_method="start")
+    encoder = MaskedMidiEncoder(base_encoder, masking_probability=0.3)
     test_dataset = MyTokenizedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,

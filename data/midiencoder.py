@@ -8,6 +8,7 @@ class MidiEncoder:
     def __init__(self):
         self.token_to_id = None
         self.vocab = None
+        self.time_key = None
 
     def tokenize_src(self, record: dict) -> list[str]:
         raise NotImplementedError("Your encoder needs *tokenize* implementation")
@@ -49,9 +50,9 @@ class QuantizedMidiEncoder(MidiEncoder):
         super().__init__()
         self.quantization_cfg = quantization_cfg
         self.time_quantization_method = time_quantization_method
-        self.time_quantization_key = time_quantization_method + "_bin"
+        self.time_key = time_quantization_method + "_bin"
 
-        self.keys = ["pitch", self.time_quantization_key, "duration_bin", "velocity_bin"]
+        self.keys = ["pitch", self.time_key, "duration_bin", "velocity_bin"]
         self.specials = ["<CLS>", "<PAD>"]
 
         self.vocab = list(self.specials)
