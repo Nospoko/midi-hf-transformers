@@ -11,10 +11,9 @@ from matplotlib import pyplot as plt
 from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
-
-from data.tokenizer import MultiTokEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
-
+from data.multitokencoder import MultiTokEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder
 
 def build_AT_translation_dataset(
     dataset: Dataset,
