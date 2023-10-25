@@ -5,7 +5,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 from utils import vocab_size
 from training_utils import train_model
 from data.dataset import MyTokenizedMidiDataset
-from data.tokenizer import MultiStartEncoder, MultiVelocityEncoder
+from data.multitokencoder import MultiStartEncoder, MultiVelocityEncoder
 
 
 def main(

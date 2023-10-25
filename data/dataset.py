@@ -13,7 +13,7 @@ from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
 from data.quantizer import MidiQuantizer, MidiATQuantizer
-from data.tokenizer import MultiTokEncoder, MaskedMidiEncoder
+from data.multitokencoder import MultiTokEncoder, MaskedMidiEncoder
 
 
 def build_AT_translation_dataset(

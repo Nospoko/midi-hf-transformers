@@ -7,8 +7,8 @@ from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
 from utils import vocab_size
-from data.tokenizer import MultiStartEncoder, MultiVelocityEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
+from data.multitokencoder import MultiStartEncoder, MultiVelocityEncoder
 
 
 def load_model_checkpoint(cfg: DictConfig) -> dict:

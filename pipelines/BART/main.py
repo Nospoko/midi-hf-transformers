@@ -4,8 +4,8 @@ from transformers import BartConfig, BartForConditionalGeneration
 
 from utils import vocab_size
 from training_utils import train_model
-from data.tokenizer import MaskedMidiEncoder
 from data.dataset import MyTokenizedMidiDataset
+from data.multitokencoder import MaskedMidiEncoder
 
 
 def main(
