@@ -48,9 +48,11 @@ class QuantizedMidiEncoder(MidiEncoder):
     def __init__(self, quantization_cfg: DictConfig, time_quantization_method: str):
         super().__init__()
         self.quantization_cfg = quantization_cfg
+        self.time_quantization_method = time_quantization_method
         self.time_quantization_key = time_quantization_method + "_bin"
-        self.keys = ["pitch", time_quantization_method, "duration_bin", "velocity_bin"]
-        self.specials = ["<CLS>"]
+
+        self.keys = ["pitch", self.time_quantization_key, "duration_bin", "velocity_bin"]
+        self.specials = ["<CLS>", "<PAD>"]
 
         self.vocab = list(self.specials)
 
@@ -70,7 +72,7 @@ class QuantizedMidiEncoder(MidiEncoder):
         src_iterators_product = itertools.product(
             # Always include 88 pitches
             range(21, 109),
-            range(self.quantization_cfg[self.time_quantization_key]),
+            range(self.quantization_cfg[self.time_quantization_method]),
             range(self.quantization_cfg.duration),
             range(self.quantization_cfg.velocity),
         )

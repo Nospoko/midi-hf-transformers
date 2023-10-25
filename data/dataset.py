@@ -12,6 +12,7 @@ from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
+from data.midiencoder import MidiEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
 from data.multitokencoder import MultiTokEncoder, MaskedMidiEncoder
 
@@ -161,7 +162,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        encoder: MultiTokEncoder,
+        encoder: MultiTokEncoder | MidiEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg

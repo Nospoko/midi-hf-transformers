@@ -44,11 +44,24 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
 
 
 def vocab_size(cfg: DictConfig):
+    if cfg.tokens_per_note == "single":
+        # 88 pitches
+        size = 88
+        # product size
+        size = size * cfg.dataset.quantization[cfg.time_quantization_method]
+        size = size * cfg.dataset.quantization.duration
+        size = size * cfg.dataset.quantization.velocity
+        # velocity tokens
+        size += 128
+        # special tokens
+        size += 2
+        return size
+
+    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
     # 88 piano keys
     size = 88
     # 2 special tokens - <CLS> and <PAD>
     size += 2
-    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
     # time tokens
     size += values[0] * values[1]
     # velocity tokens
@@ -67,14 +80,11 @@ def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: in
     tgt[tgt == -100] = pad_idx
 
     # remove special tokens
-    labels = labels[labels != pad_idx]
-    tgt = tgt[tgt != pad_idx]
+    labels[tgt == pad_idx] = pad_idx
     # 0 is <CLS> token id
-    labels = labels[labels != 0]
-    tgt = tgt[tgt != 0]
+    labels[tgt == 0] = 0
     # make labels fixed length same as target
     labels = labels[: len(tgt)]
-
     # average distance between label and target
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
 
