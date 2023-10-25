@@ -1,11 +1,11 @@
 import hydra
 import numpy as np
 from omegaconf import OmegaConf, DictConfig
+from pipelines.BART.main import main as bart_training
 
 import wandb
 from data.dataset import load_cache_dataset
 from pipelines.T5.main import main as t5_training
-from pipelines.BART.main import main as bart_training
 
 
 def initialize_wandb(cfg: DictConfig):
