@@ -13,9 +13,6 @@ class MaskedMidiEncoder:
 
         # add midi tokens to vocab
         self.token_to_id = {token: it for it, token in enumerate(self.vocab)}
-        # this is a logic used in hf tokenizers, where they store input_token_ids inside the object
-        self.src = None
-        self.tgt = None
 
     def __rich_repr__(self):
         yield "MaskedMidiEncoder"
@@ -43,24 +40,27 @@ class MaskedMidiEncoder:
 
         return src_tokens, tgt_tokens
 
-    # encode_src and encode_tgt implementations for compatibility with MyTokenizedMidiDataset
-    # note that they are only working if there is a call to encode_src first
-    def encode_src(self, record: dict) -> list[int]:
+    def encode_record(self, record: dict) -> tuple[list[int], list[int]]:
+        """
+        Encode record into src and tgt for unsupervised T5 learning.
+        """
         src_tokens, tgt_tokens = self.mask_record(record)
         mask_token_id = self.token_to_id["<MASK>"]
+
         src = [self.token_to_id[token] for token in src_tokens]
         tgt = [self.token_to_id[token] for token in tgt_tokens]
-        self.src = self.replace_masks(token_ids=src, mask_id=mask_token_id)
-        self.tgt = self.replace_masks(token_ids=tgt, mask_id=mask_token_id)
 
-        return self.src
+        src = self.replace_masks(token_ids=src, mask_id=mask_token_id)
+        tgt = self.replace_masks(token_ids=tgt, mask_id=mask_token_id)
 
-    def encode_tgt(self, record: dict) -> list[int]:
-        assert self.tgt is not None
-        return self.tgt
+        return src, tgt
 
     @staticmethod
     def replace_masks(token_ids: list[int], mask_id):
+        """
+        Replace every sequence of <MASK> token into one of <SENTINEL_[idx]>.
+        Sentinel tokens do not repeat inside one sequence.
+        """
         new_list = []
         current_sequence = []  # Store the current sequence of masks
         sentinel_token = 0

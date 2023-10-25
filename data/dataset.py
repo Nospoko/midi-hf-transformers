@@ -163,7 +163,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        encoder: MultiTokEncoder | MidiEncoder | MaskedMidiEncoder,
+        encoder: MultiTokEncoder | MidiEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg
@@ -205,6 +205,37 @@ class MyTokenizedMidiDataset(TorchDataset):
         tgt_token_ids.insert(0, cls_token_id)
 
         return src_token_ids, tgt_token_ids
+
+
+class MaskedMidiDataset(MyTokenizedMidiDataset):
+    def __init__(
+        self,
+        dataset: Dataset,
+        dataset_cfg: DictConfig,
+        base_encoder: MidiEncoder | MultiTokEncoder,
+        masking_probability,
+    ):
+        super().__init__(dataset, dataset_cfg, base_encoder)
+        self.encoder = MaskedMidiEncoder(base_encoder=base_encoder, masking_probability=masking_probability)
+
+    def __rich_repr__(self):
+        yield "MaskedMidiDataset"
+        yield "size", len(self)
+        # Nicer print
+        yield "cfg", OmegaConf.to_container(self.dataset_cfg)
+        yield "encoder", self.encoder
+
+    def __getitem__(self, idx: int) -> dict:
+        record = self.dataset[idx]
+        source_tokens_ids, target_tokens_ids = self.encoder.encode_record(record)
+
+        source_tokens_ids, target_tokens_ids = self.add_start_token(source_tokens_ids, target_tokens_ids)
+
+        out = {
+            "source_token_ids": torch.tensor(source_tokens_ids, dtype=torch.int64),
+            "target_token_ids": torch.tensor(target_tokens_ids, dtype=torch.int64),
+        }
+        return out
 
 
 def shard_and_build(
@@ -362,15 +393,15 @@ def main():
 
     # this is for testing and debugging btw
     base_encoder = MultiVelocityEncoder(cfg.quantization, time_quantization_method="start")
-    encoder = MaskedMidiEncoder(base_encoder, masking_probability=0.3)
-    test_dataset = MyTokenizedMidiDataset(
+    test_dataset = MaskedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,
-        encoder=encoder,
+        base_encoder=base_encoder,
+        masking_probability=0.3,
     )
     print(test_dataset[90])
 
-    tokens = [encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
+    tokens = [test_dataset.encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
     print("src tokens: ", tokens)
 
 
