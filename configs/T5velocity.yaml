@@ -12,6 +12,7 @@ seed: 26
 
 overfit: False
 
+tokens_per_note: "multiple"
 time_quantization_method: start
 dataset:
   sequence_duration: 5

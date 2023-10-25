@@ -4,6 +4,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 
 from utils import vocab_size
 from training_utils import train_model
+from data.midiencoder import VelocityEncoder
 from data.dataset import MyTokenizedMidiDataset
 from data.multitokencoder import MultiStartEncoder, MultiVelocityEncoder
 
@@ -26,16 +27,22 @@ def main(
 
     model = T5ForConditionalGeneration(config)
 
-    if cfg.target == "velocity":
-        tokenizer = MultiVelocityEncoder(
-            quantization_cfg=cfg.dataset.quantization,
-            time_quantization_method=cfg.time_quantization_method,
-        )
+    if cfg.tokens_per_note == "multiple":
+        if cfg.target == "velocity":
+            tokenizer = MultiVelocityEncoder(
+                quantization_cfg=cfg.dataset.quantization,
+                time_quantization_method=cfg.time_quantization_method,
+            )
+        else:
+            tokenizer = MultiStartEncoder(
+                quantization_cfg=cfg.dataset.quantization,
+                time_quantization_method=cfg.time_quantization_method,
+                tgt_bins=cfg.start_bins,
+            )
     else:
-        tokenizer = MultiStartEncoder(
+        tokenizer = VelocityEncoder(
             quantization_cfg=cfg.dataset.quantization,
             time_quantization_method=cfg.time_quantization_method,
-            tgt_bins=cfg.start_bins,
         )
 
     train_dataset = MyTokenizedMidiDataset(
