@@ -58,7 +58,7 @@ class MaskedMidiEncoder:
     @staticmethod
     def replace_masks(token_ids: list[int], mask_id):
         """
-        Replace every sequence of <MASK> token into one of <SENTINEL_[idx]>.
+        Replace every sequence of <MASK> token with one of <SENTINEL_[idx]>.
         Sentinel tokens do not repeat inside one sequence.
         """
         new_list = []

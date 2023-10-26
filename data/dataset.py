@@ -208,6 +208,10 @@ class MyTokenizedMidiDataset(TorchDataset):
 
 
 class MaskedMidiDataset(MyTokenizedMidiDataset):
+    """
+    Midi dataset for T5 denoising objective.
+    """
+
     def __init__(
         self,
         dataset: Dataset,

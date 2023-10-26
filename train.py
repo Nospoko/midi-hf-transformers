@@ -1,7 +1,6 @@
 import hydra
 import numpy as np
 from omegaconf import OmegaConf, DictConfig
-from pipelines.BART.main import main as bart_training
 
 import wandb
 from data.dataset import load_cache_dataset

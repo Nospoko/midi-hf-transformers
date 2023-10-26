@@ -72,6 +72,10 @@ def vocab_size(cfg: DictConfig):
 
     if cfg.target == "start":
         size += cfg.start_bins
+
+    if cfg.target == "denoise":
+        # add 100 sentinel tokens and 1 mask token
+        size += 101
     return size
 
 
