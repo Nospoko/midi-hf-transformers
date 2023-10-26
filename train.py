@@ -1,7 +1,6 @@
 import hydra
 import numpy as np
 from omegaconf import OmegaConf, DictConfig
-from pipelines.BART.main import main as bart_training
 
 import wandb
 from data.dataset import load_cache_dataset
@@ -38,8 +37,6 @@ def main(cfg: DictConfig):
     )
     if cfg.model_name == "T5":
         t5_training(cfg, train_translation_dataset, val_translation_dataset)
-    if cfg.model_name == "BART":
-        bart_training(cfg, train_translation_dataset, val_translation_dataset)
 
 
 if __name__ == "__main__":

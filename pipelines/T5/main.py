@@ -4,8 +4,8 @@ from transformers import T5Config, T5ForConditionalGeneration
 
 from utils import vocab_size
 from training_utils import train_model
-from data.midiencoder import VelocityEncoder
-from data.dataset import MyTokenizedMidiDataset
+from data.dataset import MaskedMidiDataset, MyTokenizedMidiDataset
+from data.midiencoder import VelocityEncoder, QuantizedMidiEncoder
 from data.multitokencoder import MultiStartEncoder, MultiVelocityEncoder
 
 
@@ -27,6 +27,34 @@ def main(
 
     model = T5ForConditionalGeneration(config)
 
+    if cfg.target == "denoise":
+        train_dataset, val_dataset = create_masked_datasets(
+            cfg=cfg,
+            train_translation_dataset=train_translation_dataset,
+            val_translation_dataset=val_translation_dataset,
+        )
+    else:
+        train_dataset, val_dataset = create_datasets(
+            cfg=cfg,
+            train_translation_dataset=train_translation_dataset,
+            val_translation_dataset=val_translation_dataset,
+        )
+
+    train_model(
+        model=model,
+        train_dataset=train_dataset,
+        val_dataset=val_dataset,
+        cfg=cfg,
+    )
+
+    print(cfg.run_name)
+
+
+def create_datasets(
+    cfg: DictConfig,
+    train_translation_dataset: Dataset,
+    val_translation_dataset: Dataset,
+) -> tuple[MyTokenizedMidiDataset, MyTokenizedMidiDataset]:
     if cfg.tokens_per_note == "multiple":
         if cfg.target == "velocity":
             tokenizer = MultiVelocityEncoder(
@@ -55,12 +83,31 @@ def main(
         dataset_cfg=cfg.dataset,
         encoder=tokenizer,
     )
+    return train_dataset, val_dataset
 
-    train_model(
-        model=model,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        cfg=cfg,
+
+def create_masked_datasets(
+    cfg: DictConfig,
+    train_translation_dataset: Dataset,
+    val_translation_dataset: Dataset,
+) -> tuple[MyTokenizedMidiDataset, MyTokenizedMidiDataset]:
+    if cfg.tokens_per_note == "multiple":
+        base_encoder = MultiStartEncoder(cfg.dataset.quantization, cfg.time_quantization_method, tgt_bins=0)
+    else:
+        base_encoder = QuantizedMidiEncoder(cfg.dataset.quantization, cfg.time_quantization_method)
+
+    train_dataset = MaskedMidiDataset(
+        dataset=train_translation_dataset,
+        dataset_cfg=cfg.dataset,
+        base_encoder=base_encoder,
+        masking_probability=cfg.masking_probability,
     )
 
-    print(cfg.run_name)
+    val_dataset = MaskedMidiDataset(
+        dataset=val_translation_dataset,
+        dataset_cfg=cfg.dataset,
+        base_encoder=base_encoder,
+        masking_probability=cfg.masking_probability,
+    )
+
+    return train_dataset, val_dataset
