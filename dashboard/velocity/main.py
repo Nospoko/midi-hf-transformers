@@ -12,6 +12,7 @@ from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
 from data.quantizer import MidiATQuantizer
+from data.midiencoder import VelocityEncoder
 from utils import vocab_size, piece_av_files
 from data.multitokencoder import MultiVelocityEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
@@ -106,11 +107,17 @@ def model_predictions_review(
         dataset_name=dataset_name,
         split=split,
     )
-    keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
-    tokenizer = MultiVelocityEncoder(
-        quantization_cfg=train_cfg.dataset.quantization,
-        keys=keys,
-    )
+
+    if train_cfg.tokens_per_note == "multiple":
+        tokenizer = MultiVelocityEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
+    else:
+        tokenizer = VelocityEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
 
     dataset = MyTokenizedMidiDataset(
         dataset=val_translation_dataset,
@@ -138,7 +145,10 @@ def model_predictions_review(
         record_source = json.loads(record["source"])
         src_token_ids = record["source_token_ids"]
 
-        max_length = len(src_token_ids) // 3 + 1
+        if train_cfg.tokens_per_note == "multiple":
+            max_length = len(src_token_ids) // 3 + 1
+        else:
+            max_length = len(src_token_ids)
         generated_velocity = model.generate(src_token_ids.unsqueeze(0), max_length=max_length)
         generated_velocity = generated_velocity.squeeze(0)
         generated_velocity = tokenizer.decode_tgt(generated_velocity)
