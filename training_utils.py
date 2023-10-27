@@ -2,7 +2,6 @@ import time
 from typing import Iterable
 
 import torch
-import einops
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn.functional import pad
@@ -176,8 +175,9 @@ def train_epoch(
         )
         out = outputs.logits
 
-        out_rearranged = einops.rearrange(out, "b n d -> (b n) d")
-        target = einops.rearrange(tgt, "b n -> (b n)")
+        out_rearranged = torch.reshape(out, [out.size(0) * out.size(1), out.size(-1)])
+        target = torch.reshape(tgt, [tgt.size(0) * tgt.size(1)])
+
         loss = outputs.loss
         loss.backward()
 
@@ -240,8 +240,8 @@ def val_epoch(
         )
         out = outputs.logits
 
-        out_rearranged = einops.rearrange(out, "b n d -> (b n) d")
-        target = einops.rearrange(tgt, "b n -> (b n)")
+        out_rearranged = torch.reshape(out, [out.size(0) * out.size(1), out.size(-1)])
+        target = torch.reshape(tgt, [tgt.size(0) * tgt.size(1)])
         loss = outputs.loss
 
         total_loss += loss.item()
