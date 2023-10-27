@@ -57,10 +57,9 @@ def piece_to_AT_records(
     sequence_step: int,
 ):
     chopped_sequences = []
-    n_samples = 1 + int(piece.df.iloc[-1]["start"] - sequence_duration) // sequence_step
     df = piece.df.copy()
-    for jt in range(n_samples):
-        start = jt * sequence_step
+    start = 0
+    while start < len(df.start):
         start_time = df["start"][start]
         finish = start
 
@@ -89,6 +88,11 @@ def piece_to_AT_records(
             "source": json.dumps(source),
         }
         chopped_sequences.append(sequence)
+        if finish == len(df["start"]):
+            break
+        start = finish
+        while df["start"][finish] - df["start"][start] > sequence_step:
+            start -= 1
     return chopped_sequences
 
 
