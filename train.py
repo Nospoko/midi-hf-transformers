@@ -1,5 +1,6 @@
 import hydra
 import numpy as np
+from datasets import concatenate_datasets
 from omegaconf import OmegaConf, DictConfig
 
 import wandb
@@ -15,26 +16,39 @@ def initialize_wandb(cfg: DictConfig):
     )
 
 
+def load_train_dataset(cfg: DictConfig):
+    datasets = []
+    for name in cfg.dataset_name.split("+"):
+        dataset = load_cache_dataset(
+            dataset_cfg=cfg.dataset,
+            dataset_name=name,
+            split="train",
+        )
+
+        datasets.append(dataset)
+    train_dataset = concatenate_datasets(datasets)
+
+    return train_dataset
+
+
 @hydra.main(version_base=None, config_path="configs", config_name="T5velocity")
 def main(cfg: DictConfig):
     if cfg.log:
         initialize_wandb(cfg)
 
-    if cfg.overfit:
-        split_slice = "[:1]"
-    else:
-        split_slice = ""
     np.random.seed(cfg.seed)
-    train_translation_dataset = load_cache_dataset(
-        dataset_cfg=cfg.dataset,
-        dataset_name=cfg.dataset_name,
-        split="train" + split_slice,
-    )
-    val_translation_dataset = load_cache_dataset(
-        dataset_cfg=cfg.dataset,
-        dataset_name="roszcz/maestro-v1-sustain",
-        split=f"validation{split_slice}+test{split_slice}",
-    )
+    while True:
+        try:
+            train_translation_dataset = load_train_dataset(cfg)
+
+            val_translation_dataset = load_cache_dataset(
+                dataset_cfg=cfg.dataset,
+                dataset_name="roszcz/maestro-v1-sustain",
+                split="validation+test",
+            )
+            break
+        except ConnectionError:
+            print("Connection error, trying again...")
     if cfg.model_name == "T5":
         t5_training(cfg, train_translation_dataset, val_translation_dataset)
 
