@@ -32,11 +32,15 @@ class MaskedMidiEncoder:
 
         ids_to_mask = np.random.randint(len(src_tokens), size=int(num_masks))
 
-        for idx in range(len(src_tokens)):
-            if idx in ids_to_mask:
-                src_tokens[idx] = "<MASK>"
-            else:
-                tgt_tokens[idx] = "<MASK>"
+        np_src = np.array(src_tokens)
+        np_tgt = np.array(tgt_tokens)
+
+        # create a tgt mask which will be the opposite of src masking
+        tgt_mask = np.ones_like(np_tgt, dtype=bool)
+        tgt_mask[ids_to_mask] = 0
+
+        np_src[ids_to_mask] = "<MASK>"
+        np_tgt[tgt_mask] = "<MASK>"
 
         return src_tokens, tgt_tokens
 
