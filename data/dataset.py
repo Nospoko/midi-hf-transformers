@@ -64,7 +64,7 @@ def piece_to_AT_records(
         start_time = df["start"][start]
         finish = start
 
-        while df["start"][finish] - df["start"][start] < sequence_duration:
+        while df["start"][finish] - df["start"][start] < sequence_duration and finish < len(df["start"]):
             finish += 1
 
         part = df.iloc[start:finish].copy()
