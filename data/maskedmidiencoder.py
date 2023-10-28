@@ -31,7 +31,6 @@ class MaskedMidiEncoder:
         num_masks = self.masking_probability * len(src_tokens)
 
         ids_to_mask = np.random.randint(len(src_tokens), size=int(num_masks))
-        print(ids_to_mask)
         np_src = np.array(src_tokens)
         np_tgt = np.array(tgt_tokens)
 
