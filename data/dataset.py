@@ -87,7 +87,8 @@ def piece_to_AT_records(
             "velocity": part.velocity.values,
             "source": json.dumps(source),
         }
-        chopped_sequences.append(sequence)
+        if min(sequence["pitch"]) >= 21:
+            chopped_sequences.append(sequence)
         if finish == len(df["start"]):
             break
         start = finish
@@ -361,7 +362,7 @@ def load_cache_dataset(
 
 
 def main():
-    dataset_name = "roszcz/maestro-v1-sustain"
+    dataset_name = "roszcz/pianofor-ai"
     dataset_cfg = {
         "sequence_duration": 5,
         "sequence_step": 10,
@@ -373,7 +374,7 @@ def main():
         },
     }
     cfg = OmegaConf.create(dataset_cfg)
-    dataset = load_cache_dataset(cfg, dataset_name, split="test")
+    dataset = load_cache_dataset(cfg, dataset_name, split="train")
 
     quantizer = MidiATQuantizer(
         n_duration_bins=cfg.quantization.duration,
