@@ -202,10 +202,9 @@ class MyTokenizedMidiDataset(TorchDataset):
         out = self[idx] | self.dataset[idx]
         return out
 
-    @staticmethod
-    def add_start_token(src_token_ids: list[int], tgt_token_ids: list[int]):
+    def add_start_token(self, src_token_ids: list[int], tgt_token_ids: list[int]):
         # assert that start token always has idx = 0
-        cls_token_id = 0
+        cls_token_id = self.encoder.token_to_id["<CLS>"]
         src_token_ids.insert(0, cls_token_id)
         tgt_token_ids.insert(0, cls_token_id)
 
@@ -362,7 +361,7 @@ def load_cache_dataset(
 
 
 def main():
-    dataset_name = "roszcz/pianofor-ai"
+    dataset_name = "roszcz/maestro-v1-sustain"
     dataset_cfg = {
         "sequence_duration": 5,
         "sequence_step": 10,
@@ -374,7 +373,7 @@ def main():
         },
     }
     cfg = OmegaConf.create(dataset_cfg)
-    dataset = load_cache_dataset(cfg, dataset_name, split="train")
+    dataset = load_cache_dataset(cfg, dataset_name, split="test")
 
     quantizer = MidiATQuantizer(
         n_duration_bins=cfg.quantization.duration,
@@ -408,10 +407,10 @@ def main():
         base_encoder=base_encoder,
         masking_probability=0.3,
     )
-    print(test_dataset[90])
+    record = test_dataset[90]
 
-    tokens = [test_dataset.encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
-    print("src tokens: ", tokens)
+    df = test_dataset.encoder.decode(record["source_token_ids"], record["target_token_ids"])
+    print(df)
 
 
 if __name__ == "__main__":
