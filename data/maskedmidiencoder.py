@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 
 from data.midiencoder import MidiEncoder
@@ -8,8 +9,9 @@ class MaskedMidiEncoder:
     def __init__(self, base_encoder: MultiTokEncoder | MidiEncoder, masking_probability: float = 0.15):
         self.base_encoder = base_encoder
         self.masking_probability = masking_probability
+        self.num_sentinel = 100
 
-        self.vocab = [f"<SENTINEL_{idx}>" for idx in range(100)] + ["<MASK>"] + base_encoder.vocab
+        self.vocab = [f"<SENTINEL_{idx}>" for idx in range(self.num_sentinel)] + ["<MASK>"] + base_encoder.vocab
 
         # add midi tokens to vocab
         self.token_to_id = {token: it for it, token in enumerate(self.vocab)}
@@ -81,3 +83,24 @@ class MaskedMidiEncoder:
         if current_sequence:
             new_list.append(sentinel_token)
         return new_list
+
+    def decode(self, src_token_ids: torch.Tensor, tgt_token_ids: torch.Tensor):
+        # Initialize an index variable to keep track of the position in the target tensor
+        idx = 0
+
+        # Create an empty list to store the original tensor
+        token_ids = []
+
+        # Iterate through the source tensor
+        for value in src_token_ids:
+            if value == 0:
+                # If the value is masked in the source, use the corresponding value from the target
+                token_ids.append(tgt_token_ids[idx])
+                idx += 1
+            else:
+                # If the value is not masked in the source, use the value from the source
+                token_ids.append(value)
+
+        tokens = [self.vocab[token_id] for token_id in token_ids]
+
+        return self.base_encoder.untokenize_src(tokens)

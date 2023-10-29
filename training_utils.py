@@ -208,7 +208,7 @@ def train_epoch(
 
             # log the loss each to Weights and Biases
             if log:
-                wandb.log({"train/loss_step": loss.item()})
+                wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist})
 
     # Return average loss over all tokens and updated train state
     return total_loss / len(dataloader), total_dist / len(dataloader)
