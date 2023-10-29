@@ -85,22 +85,23 @@ class MaskedMidiEncoder:
         return new_list
 
     def decode(self, src_token_ids: torch.Tensor, tgt_token_ids: torch.Tensor):
-        # Initialize an index variable to keep track of the position in the target tensor
-        idx = 0
-
-        # Create an empty list to store the original tensor
+        src_it = 0
+        tgt_it = 0
         token_ids = []
-
-        # Iterate through the source tensor
-        for value in src_token_ids:
-            if value == 0:
-                # If the value is masked in the source, use the corresponding value from the target
-                token_ids.append(tgt_token_ids[idx])
-                idx += 1
+        while src_it < len(src_token_ids) and tgt_it < len(tgt_token_ids):
+            if src_token_ids[src_it] < self.num_sentinel:
+                while tgt_it < len(tgt_token_ids) and tgt_token_ids[tgt_it] >= self.num_sentinel:
+                    token_ids.append(tgt_token_ids[tgt_it])
+                    tgt_it += 1
+                src_it += 1
+            elif tgt_token_ids[tgt_it] < self.num_sentinel:
+                while src_it < len(src_token_ids) and src_token_ids[src_it] >= self.num_sentinel:
+                    token_ids.append(src_token_ids[src_it])
+                    src_it += 1
+                tgt_it += 1
             else:
-                # If the value is not masked in the source, use the value from the source
-                token_ids.append(value)
+                src_it += 1
+                tgt_it += 1
 
         tokens = [self.vocab[token_id] for token_id in token_ids]
-
         return self.base_encoder.untokenize_src(tokens)

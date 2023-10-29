@@ -106,15 +106,13 @@ class MultiVelocityEncoder(MultiTokEncoder):
         if tokens[0] == "<CLS>":
             # get rid of cls token
             tokens = tokens[1:]
-
         for idx, token in enumerate(tokens):
             if token == "<PAD>":
                 break
             if idx % 3 == 0:
                 # pitch token
-                buff.clear()
                 # [6:] to clear "PITCH-" prefix from a token
-                buff.append(int(token[6:]))
+                buff = [int(token[6:])]
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
@@ -209,9 +207,8 @@ class MultiStartEncoder(MultiTokEncoder):
                 break
             if idx % 3 == 0:
                 # pitch token
-                buff.clear()
                 # [6:] to clear "PITCH-" prefix from a token
-                buff.append(int(token[6:]))
+                buff = [int(token[6:])]
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
