@@ -1,9 +1,9 @@
 import hydra
+import wandb
 import numpy as np
 from datasets import concatenate_datasets
 from omegaconf import OmegaConf, DictConfig
 
-import wandb
 from data.dataset import load_cache_dataset
 from pipelines.T5.main import main as t5_training
 

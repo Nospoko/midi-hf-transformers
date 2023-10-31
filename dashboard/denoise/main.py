@@ -152,16 +152,20 @@ def model_predictions_review(
             max_length = len(src_token_ids)
         generated_token_ids = model.generate(src_token_ids.unsqueeze(0), max_length=max_length)
         generated_token_ids = generated_token_ids.squeeze(0)
-        generated_df = dataset.encoder.decode(src_token_ids, generated_token_ids)
 
         # Reconstruct the sequence as recorded
         midi_columns = ["pitch", "start", "end", "duration", "velocity"]
         true_notes = pd.DataFrame({c: record[c] for c in midi_columns})
         true_piece = MidiPiece(df=true_notes, source=record_source)
         true_piece.time_shift(-true_piece.df.start.min())
+        try:
+            generated_df = dataset.encoder.decode(src_token_ids, generated_token_ids)
+            # create quantized piece with predicted velocities
+            pred_piece = MidiPiece(generated_df)
 
-        # create quantized piece with predicted velocities
-        pred_piece = MidiPiece(generated_df)
+        except ValueError:
+            generated_df = pd.DataFrame([[23, 1, 1, 1, 1]], columns=midi_columns)
+            pred_piece = MidiPiece(generated_df)
 
         pred_piece.source = true_piece.source.copy()
 
@@ -175,15 +179,25 @@ def model_predictions_review(
         # create a dashboard
         st.json(record_source)
         cols = st.columns(2)
+
+        source_tokens = [dataset.encoder.vocab[idx] for idx in src_token_ids]
+        tgt_tokens = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
+        generated_tokens = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
         with cols[0]:
             # Unchanged
             st.image(true_piece_paths["pianoroll_path"])
             st.audio(true_piece_paths["mp3_path"])
+            st.markdown("**Source tokens:**")
+            st.markdown(source_tokens)
+            st.markdown("**Target tokens:**")
+            st.markdown(tgt_tokens)
 
         with cols[1]:
             # Predicted
             st.image(predicted_paths["pianoroll_path"])
             st.audio(predicted_paths["mp3_path"])
+            st.markdown("**Predicted tokens:**")
+            st.markdown(generated_tokens)
 
 
 if __name__ == "__main__":
