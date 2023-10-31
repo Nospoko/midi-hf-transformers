@@ -2,13 +2,13 @@ import time
 from typing import Iterable
 
 import torch
+import wandb
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 
-import wandb
 from utils import calculate_average_distance
 from data.dataset import MyTokenizedMidiDataset
 
