@@ -26,7 +26,7 @@ def main(
             train_translation_dataset=train_translation_dataset,
             val_translation_dataset=val_translation_dataset,
         )
-    start_token_id = train_dataset.encoder.token_to_id("<CLS>")
+    start_token_id = train_dataset.encoder.token_to_id["<CLS>"]
     config = T5Config(
         vocab_size=vocab_size(cfg),
         decoder_start_token_id=start_token_id,
