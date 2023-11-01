@@ -14,19 +14,6 @@ def main(
     train_translation_dataset: Dataset,
     val_translation_dataset: Dataset,
 ):
-    config = T5Config(
-        vocab_size=vocab_size(cfg),
-        decoder_start_token_id=0,
-        use_cache=False,
-        d_model=cfg.model.d_model,
-        d_kv=cfg.model.d_kv,
-        d_ff=cfg.model.d_ff,
-        num_layers=cfg.model.num_layers,
-        num_heads=cfg.model.num_heads,
-    )
-
-    model = T5ForConditionalGeneration(config)
-
     if cfg.target == "denoise":
         train_dataset, val_dataset = create_masked_datasets(
             cfg=cfg,
@@ -39,6 +26,19 @@ def main(
             train_translation_dataset=train_translation_dataset,
             val_translation_dataset=val_translation_dataset,
         )
+    start_token_id = train_dataset.encoder.token_to_id("<CLS>")
+    config = T5Config(
+        vocab_size=vocab_size(cfg),
+        decoder_start_token_id=start_token_id,
+        use_cache=False,
+        d_model=cfg.model.d_model,
+        d_kv=cfg.model.d_kv,
+        d_ff=cfg.model.d_ff,
+        num_layers=cfg.model.num_layers,
+        num_heads=cfg.model.num_heads,
+    )
+
+    model = T5ForConditionalGeneration(config)
 
     train_model(
         model=model,

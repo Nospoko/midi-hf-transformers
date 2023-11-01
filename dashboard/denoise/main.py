@@ -5,13 +5,11 @@ import json
 import torch
 import numpy as np
 import pandas as pd
-import torch.nn as nn
 import streamlit as st
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
-from data.quantizer import MidiATQuantizer
 from utils import vocab_size, piece_av_files
 from data.midiencoder import QuantizedMidiEncoder
 from data.multitokencoder import MultiVelocityEncoder
@@ -48,30 +46,15 @@ def main():
     train_cfg = OmegaConf.create(checkpoint["cfg"])
     train_cfg.device = DEVICE
 
+    # - - for model
+    st.markdown("Model config:")
+    model_params = OmegaConf.to_container(train_cfg.model)
+    st.json(model_params, expanded=False)
+
     # - - for dataset
     dataset_params = OmegaConf.to_container(train_cfg.dataset)
     st.markdown("Dataset config:")
     st.json(dataset_params, expanded=True)
-
-    config = T5Config(
-        vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=0,
-        use_cache=False,
-    )
-
-    model = T5ForConditionalGeneration(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval().to(DEVICE)
-
-    quantizer = MidiATQuantizer(
-        n_duration_bins=train_cfg.dataset.quantization.duration,
-        n_velocity_bins=train_cfg.dataset.quantization.velocity,
-        n_start_bins=train_cfg.dataset.quantization.start,
-        sequence_duration=train_cfg.dataset.sequence_duration,
-    )
-
-    n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
-    st.markdown(f"Model parameters: {n_parameters:.3f}M")
 
     # Folder to render audio and video
     model_dir = f"tmp/dashboard/{train_cfg.run_name}"
@@ -81,16 +64,14 @@ def main():
 
     if mode == "Sequence predictions":
         model_predictions_review(
-            model=model,
-            quantizer=quantizer,
+            checkpoint=checkpoint,
             train_cfg=train_cfg,
             model_dir=model_dir,
         )
 
 
 def model_predictions_review(
-    model: nn.Module,
-    quantizer: MidiATQuantizer,
+    checkpoint: dict,
     train_cfg: DictConfig,
     model_dir: str,
 ):
@@ -125,6 +106,25 @@ def model_predictions_review(
         base_encoder=base_tokenizer,
         masking_probability=train_cfg.masking_probability,
     )
+
+    start_token_id = dataset.encoder.token_to_id["<CLS>"]
+    config = T5Config(
+        vocab_size=vocab_size(train_cfg),
+        decoder_start_token_id=start_token_id,
+        use_cache=False,
+        d_model=train_cfg.model.d_model,
+        d_kv=train_cfg.model.d_kv,
+        d_ff=train_cfg.model.d_ff,
+        num_layers=train_cfg.model.num_layers,
+        num_heads=train_cfg.model.num_heads,
+    )
+
+    model = T5ForConditionalGeneration(config)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.eval().to(DEVICE)
+
+    n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
+    st.markdown(f"Model parameters: {n_parameters:.3f}M")
 
     n_samples = 5
     np.random.seed(random_seed)
