@@ -13,6 +13,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 from utils import vocab_size, piece_av_files
 from data.midiencoder import QuantizedMidiEncoder
 from data.multitokencoder import MultiVelocityEncoder
+from data.quantizer import MidiQuantizer, MidiATQuantizer
 from data.dataset import MaskedMidiDataset, load_cache_dataset
 from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
@@ -89,7 +90,19 @@ def model_predictions_review(
         dataset_name=dataset_name,
         split=split,
     )
-
+    if train_cfg.time_quantization_method == "start":
+        quantizer = MidiATQuantizer(
+            n_duration_bins=dataset_cfg.quantization.duration,
+            n_velocity_bins=dataset_cfg.quantization.velocity,
+            n_start_bins=dataset_cfg.quantization.start,
+            sequence_duration=dataset_cfg.sequence_duration,
+        )
+    else:
+        quantizer = MidiQuantizer(
+            n_velocity_bins=dataset_cfg.quantization.velocity,
+            n_duration_bins=dataset_cfg.quantization.duration,
+            n_dstart_bins=dataset_cfg.quantization.dstart,
+        )
     if train_cfg.tokens_per_note == "multiple":
         base_tokenizer = MultiVelocityEncoder(
             quantization_cfg=train_cfg.dataset.quantization,
@@ -169,6 +182,7 @@ def model_predictions_review(
         true_piece.time_shift(-true_piece.df.start.min())
         try:
             generated_df = dataset.encoder.decode(src_token_ids, generated_token_ids)
+            generated_df = quantizer.apply_quantization(generated_df)
             # create quantized piece with predicted velocities
             pred_piece = MidiPiece(generated_df)
 
