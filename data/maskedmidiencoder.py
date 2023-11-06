@@ -105,3 +105,30 @@ class MaskedMidiEncoder:
 
         tokens = [self.vocab[token_id] for token_id in token_ids]
         return self.base_encoder.untokenize_src(tokens)
+
+
+class MaskedNoteEncoder(MaskedMidiEncoder):
+    def __init__(self, base_encoder: MultiTokEncoder | MidiEncoder, masking_probability: float = 0.15):
+        super().__init__(base_encoder, masking_probability)
+
+    def mask_record(self, record: dict) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Mask record and return tuple of src and tgt tokens with masks.
+        """
+        src_tokens = self.base_encoder.tokenize_src(record)
+        tgt_tokens = src_tokens.copy()
+        num_masks = self.masking_probability * len(src_tokens) // 3
+
+        ids_to_mask: np.ndarray[int] = np.random.randint(len(src_tokens) // 3, size=int(num_masks)) * 3
+        ids_to_mask = np.concatenate([ids_to_mask, ids_to_mask + 1, ids_to_mask + 2])
+        np_src = np.array(src_tokens)
+        np_tgt = np.array(tgt_tokens)
+
+        # create a tgt mask which will be the opposite of src masking
+        tgt_mask = np.ones_like(np_tgt, dtype=bool)
+        tgt_mask[ids_to_mask] = 0
+
+        np_src[ids_to_mask] = "<MASK>"
+        np_tgt[tgt_mask] = "<MASK>"
+
+        return np_src, np_tgt

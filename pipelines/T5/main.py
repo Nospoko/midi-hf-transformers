@@ -6,6 +6,7 @@ from utils import vocab_size
 from training_utils import train_model
 from data.dataset import MaskedMidiDataset, MyTokenizedMidiDataset
 from data.midiencoder import VelocityEncoder, QuantizedMidiEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 from data.multitokencoder import MultiStartEncoder, MultiVelocityEncoder
 
 
@@ -95,19 +96,23 @@ def create_masked_datasets(
         base_encoder = MultiStartEncoder(cfg.dataset.quantization, cfg.time_quantization_method, tgt_bins=0)
     else:
         base_encoder = QuantizedMidiEncoder(cfg.dataset.quantization, cfg.time_quantization_method)
+    if cfg.mask == "notes":
+        encoder = MaskedNoteEncoder(base_encoder=base_encoder, masking_probability=cfg.masking_probability)
+    else:
+        encoder = MaskedMidiEncoder(base_encoder=base_encoder, masking_probability=cfg.masking_probability)
 
     train_dataset = MaskedMidiDataset(
         dataset=train_translation_dataset,
         dataset_cfg=cfg.dataset,
         base_encoder=base_encoder,
-        masking_probability=cfg.masking_probability,
+        encoder=encoder,
     )
 
     val_dataset = MaskedMidiDataset(
         dataset=val_translation_dataset,
         dataset_cfg=cfg.dataset,
         base_encoder=base_encoder,
-        masking_probability=cfg.masking_probability,
+        encoder=encoder,
     )
 
     return train_dataset, val_dataset

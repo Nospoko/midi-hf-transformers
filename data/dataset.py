@@ -14,8 +14,8 @@ from datasets import Dataset, load_dataset, concatenate_datasets
 
 from data.midiencoder import MidiEncoder
 from data.multitokencoder import MultiTokEncoder
-from data.maskedmidiencoder import MaskedMidiEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
+from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
 
 def build_AT_translation_dataset(
@@ -221,10 +221,10 @@ class MaskedMidiDataset(MyTokenizedMidiDataset):
         dataset: Dataset,
         dataset_cfg: DictConfig,
         base_encoder: MidiEncoder | MultiTokEncoder,
-        masking_probability,
+        encoder: MaskedMidiEncoder,
     ):
         super().__init__(dataset, dataset_cfg, base_encoder)
-        self.encoder = MaskedMidiEncoder(base_encoder=base_encoder, masking_probability=masking_probability)
+        self.encoder = encoder
 
     def __rich_repr__(self):
         yield "MaskedMidiDataset"
@@ -391,7 +391,7 @@ def main():
     plt.xlabel("idx")
     plt.show()
 
-    record = pd.DataFrame(dataset[0])
+    record = pd.DataFrame(dataset[90])
     record = quantizer.apply_quantization(record)
     piece = ff.MidiPiece(record)
     print(piece.df)
@@ -401,13 +401,15 @@ def main():
 
     # this is for testing and debugging btw
     base_encoder = MultiVelocityEncoder(cfg.quantization, time_quantization_method="start")
+    encoder = MaskedNoteEncoder(base_encoder=base_encoder, masking_probability=0.3)
     test_dataset = MaskedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,
         base_encoder=base_encoder,
-        masking_probability=0.3,
+        encoder=encoder,
     )
     record = test_dataset[90]
+    print([encoder.vocab[token] for token in record["source_token_ids"]])
 
     df = test_dataset.encoder.decode(record["source_token_ids"], record["target_token_ids"])
     print(df)
