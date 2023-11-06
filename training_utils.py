@@ -21,6 +21,7 @@ def train_model(
 ) -> nn.Module:
     model.to(cfg.device)
     pad_idx = train_dataset.encoder.token_to_id["<PAD>"]
+    cls_idx = train_dataset.encoder.token_to_id["<CLS>"]
 
     def collate_fn(batch):
         return collate(batch, pad_idx)
@@ -52,6 +53,7 @@ def train_model(
             model=model,
             optimizer=optimizer,
             pad_idx=pad_idx,
+            cls_idx=cls_idx,
             accum_iter=cfg.train.accum_iter,
             log=cfg.log,
             log_frequency=cfg.log_frequency,
@@ -66,6 +68,7 @@ def train_model(
             model=model,
             device=cfg.device,
             pad_idx=pad_idx,
+            cls_idx=cls_idx,
         )
 
         if v_loss <= best_test_loss:
@@ -145,6 +148,7 @@ def train_epoch(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
     pad_idx: int = 1,
+    cls_idx: int = 0,
     accum_iter: int = 1,
     log_frequency: int = 10,
     log: bool = False,
@@ -165,7 +169,7 @@ def train_epoch(
         tgt = batch["target_token_ids"].to(device)
         n_tokens = tgt.numel()
         tgt[tgt == pad_idx] = -100
-        tgt[tgt == 0] = -100
+        tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx
 
         outputs = model(
@@ -219,6 +223,7 @@ def val_epoch(
     dataloader: Iterable,
     model: nn.Module,
     pad_idx: int = 1,
+    cls_idx: int = 0,
     device: str = "cpu",
 ) -> tuple[float, float]:
     total_tokens = 0
@@ -231,6 +236,7 @@ def val_epoch(
         tgt = batch["target_token_ids"].to(device)
         n_tokens = tgt.numel()
         tgt[tgt == pad_idx] = -100
+        tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx
 
         outputs = model(
