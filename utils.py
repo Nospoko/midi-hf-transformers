@@ -85,8 +85,7 @@ def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: in
 
     # remove special tokens
     labels[tgt == pad_idx] = pad_idx
-    # 0 is <CLS> token id
-    labels[tgt == 0] = 0
+
     # make labels fixed length same as target
     labels = labels[: len(tgt)]
     # average distance between label and target
