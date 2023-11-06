@@ -14,6 +14,7 @@ from utils import vocab_size, piece_av_files
 from data.midiencoder import QuantizedMidiEncoder
 from data.multitokencoder import MultiVelocityEncoder
 from data.dataset import MaskedMidiDataset, load_cache_dataset
+from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
 # Set the layout of the Streamlit page
 st.set_page_config(layout="wide", page_title="Velocity Transformer", page_icon=":musical_keyboard")
@@ -100,11 +101,19 @@ def model_predictions_review(
             time_quantization_method=train_cfg.time_quantization_method,
         )
 
+    if "mask" in train_cfg:
+        if train_cfg.mask == "notes":
+            encoder = MaskedNoteEncoder(base_encoder=base_tokenizer, masking_probability=train_cfg.masking_probability)
+        else:
+            encoder = MaskedMidiEncoder(base_encoder=base_tokenizer, masking_probability=train_cfg.masking_probability)
+    else:
+        encoder = MaskedMidiEncoder(base_encoder=base_tokenizer, masking_probability=train_cfg.masking_probability)
+
     dataset = MaskedMidiDataset(
         dataset=val_translation_dataset,
         dataset_cfg=train_cfg.dataset,
         base_encoder=base_tokenizer,
-        masking_probability=train_cfg.masking_probability,
+        encoder=encoder,
     )
 
     start_token_id = dataset.encoder.token_to_id["<CLS>"]
