@@ -154,20 +154,20 @@ def train_epoch(
     log: bool = False,
     device: str = "cpu",
 ) -> tuple[float, float]:
-    start = time.time()
-    total_loss = 0
-    total_dist = 0
-    tokens = 0
-    n_accum = 0
-    it = 0
+    start: float = time.time()
+    total_loss: float = 0
+    total_dist: float = 0
+    tokens: int = 0
+    n_accum: int = 0
+    it: int = 0
 
     # create progress bar
-    steps = len(dataloader)
+    steps: int = len(dataloader)
     progress_bar = tqdm(dataloader, total=steps)
     for batch in progress_bar:
-        src = batch["source_token_ids"].to(device)
-        tgt = batch["target_token_ids"].to(device)
-        n_tokens = tgt.numel()
+        src: torch.Tensor = batch["source_token_ids"].to(device)
+        tgt: torch.Tensor = batch["target_token_ids"].to(device)
+        n_tokens: int = tgt.numel()
         tgt[tgt == pad_idx] = -100
         tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx
@@ -226,15 +226,15 @@ def val_epoch(
     cls_idx: int = 0,
     device: str = "cpu",
 ) -> tuple[float, float]:
-    total_tokens = 0
-    total_loss = 0
-    tokens = 0
-    total_dist = 0
+    total_tokens: int = 0
+    total_loss: float = 0
+    tokens: int = 0
+    total_dist: float = 0
 
     for batch in tqdm(dataloader):
-        src = batch["source_token_ids"].to(device)
-        tgt = batch["target_token_ids"].to(device)
-        n_tokens = tgt.numel()
+        src: torch.Tensor = batch["source_token_ids"].to(device)
+        tgt: torch.Tensor = batch["target_token_ids"].to(device)
+        n_tokens: int = tgt.numel()
         tgt[tgt == pad_idx] = -100
         tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx

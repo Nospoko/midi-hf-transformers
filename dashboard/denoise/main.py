@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import pandas as pd
 import streamlit as st
+from datasets import Dataset
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
@@ -18,7 +19,7 @@ from data.dataset import MaskedMidiDataset, load_cache_dataset
 from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
 # Set the layout of the Streamlit page
-st.set_page_config(layout="wide", page_title="Velocity Transformer", page_icon=":musical_keyboard")
+st.set_page_config(layout="wide", page_title="T5 Denoise", page_icon=":musical_keyboard")
 
 with st.sidebar:
     devices = ["cpu"] + [f"cuda:{it}" for it in range(torch.cuda.device_count())]
@@ -36,30 +37,30 @@ def main():
     with st.sidebar:
         # Show available checkpoints
         options = glob.glob("checkpoints/denoise/*.pt")
-        options.sort()
+        options.sort(reverse=True)
         checkpoint_path = st.selectbox(label="model", options=options)
         st.markdown("Selected checkpoint:")
         st.markdown(checkpoint_path)
 
     # Load:
-    checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
+    checkpoint: dict = torch.load(checkpoint_path, map_location=DEVICE)
 
     # - original config
-    train_cfg = OmegaConf.create(checkpoint["cfg"])
+    train_cfg: DictConfig = OmegaConf.create(checkpoint["cfg"])
     train_cfg.device = DEVICE
 
     # - - for model
     st.markdown("Model config:")
-    model_params = OmegaConf.to_container(train_cfg.model)
+    model_params: dict = OmegaConf.to_container(train_cfg.model)
     st.json(model_params, expanded=False)
 
     # - - for dataset
-    dataset_params = OmegaConf.to_container(train_cfg.dataset)
+    dataset_params: dict = OmegaConf.to_container(train_cfg.dataset)
     st.markdown("Dataset config:")
     st.json(dataset_params, expanded=True)
 
     # Folder to render audio and video
-    model_dir = f"tmp/dashboard/{train_cfg.run_name}"
+    model_dir: str = f"tmp/dashboard/{train_cfg.run_name}"
 
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)
@@ -78,14 +79,14 @@ def model_predictions_review(
     model_dir: str,
 ):
     # load checkpoint, force dashboard device
-    dataset_cfg = train_cfg.dataset
-    dataset_name = st.text_input(label="dataset", value=train_cfg.dataset_name)
-    split = st.text_input(label="split", value="test")
+    dataset_cfg: DictConfig = train_cfg.dataset
+    dataset_name: str = st.text_input(label="dataset", value=train_cfg.dataset_name)
+    split: str = st.text_input(label="split", value="test")
 
-    random_seed = st.selectbox(label="random seed", options=range(20))
+    random_seed: int = st.selectbox(label="random seed", options=range(20))
 
     # load translation dataset and create MyTokenizedMidiDataset
-    val_translation_dataset = load_cache_dataset(
+    val_translation_dataset: Dataset = load_cache_dataset(
         dataset_cfg=dataset_cfg,
         dataset_name=dataset_name,
         split=split,
@@ -129,10 +130,13 @@ def model_predictions_review(
         encoder=encoder,
     )
 
-    start_token_id = dataset.encoder.token_to_id["<CLS>"]
+    start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
+    pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
     config = T5Config(
         vocab_size=vocab_size(train_cfg),
         decoder_start_token_id=start_token_id,
+        pad_token_id=pad_token_id,
+        eos_token_id=pad_token_id,
         use_cache=False,
         d_model=train_cfg.model.d_model,
         d_kv=train_cfg.model.d_kv,
@@ -145,12 +149,12 @@ def model_predictions_review(
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval().to(DEVICE)
 
-    n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
+    n_parameters: float = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
 
-    n_samples = 5
+    n_samples: int = 5
     np.random.seed(random_seed)
-    idxs = np.random.randint(len(dataset), size=n_samples)
+    idxs: np.ndarray[int] = np.random.randint(len(dataset), size=n_samples)
 
     cols = st.columns(3)
     with cols[0]:
@@ -164,15 +168,11 @@ def model_predictions_review(
     print("Making predictions ...")
     for record_id in idxs:
         # Numpy to int :(
-        record = dataset.get_complete_record(int(record_id))
-        record_source = json.loads(record["source"])
-        src_token_ids = record["source_token_ids"]
+        record: dict = dataset.get_complete_record(int(record_id))
+        record_source: dict = json.loads(record["source"])
+        src_token_ids: torch.Tensor = record["source_token_ids"]
 
-        if train_cfg.tokens_per_note == "multiple":
-            max_length = len(src_token_ids) // 3 + 1
-        else:
-            max_length = len(src_token_ids)
-        generated_token_ids = model.generate(src_token_ids.unsqueeze(0), max_length=max_length)
+        generated_token_ids: torch.Tensor = model.generate(src_token_ids.unsqueeze(0), max_length=128)
         generated_token_ids = generated_token_ids.squeeze(0)
 
         # Reconstruct the sequence as recorded
@@ -181,7 +181,7 @@ def model_predictions_review(
         true_piece = MidiPiece(df=true_notes, source=record_source)
         true_piece.time_shift(-true_piece.df.start.min())
         try:
-            generated_df = dataset.encoder.decode(src_token_ids, generated_token_ids)
+            generated_df: pd.DataFrame = dataset.encoder.decode(src_token_ids, generated_token_ids)
             generated_df = quantizer.apply_quantization(generated_df)
             # create quantized piece with predicted velocities
             pred_piece = MidiPiece(generated_df)
@@ -193,19 +193,19 @@ def model_predictions_review(
         pred_piece.source = true_piece.source.copy()
 
         # create files
-        true_save_base = os.path.join(model_dir, f"true_{record_id}")
-        true_piece_paths = piece_av_files(piece=true_piece, save_base=true_save_base)
+        true_save_base: str = os.path.join(model_dir, f"true_{record_id}")
+        true_piece_paths: dict = piece_av_files(piece=true_piece, save_base=true_save_base)
 
-        predicted_save_base = os.path.join(model_dir, f"predicted_{record_id}")
-        predicted_paths = piece_av_files(piece=pred_piece, save_base=predicted_save_base)
+        predicted_save_base: str = os.path.join(model_dir, f"predicted_{record_id}")
+        predicted_paths: dict = piece_av_files(piece=pred_piece, save_base=predicted_save_base)
 
         # create a dashboard
         st.json(record_source)
         cols = st.columns(2)
 
-        source_tokens = [dataset.encoder.vocab[idx] for idx in src_token_ids]
-        tgt_tokens = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
-        generated_tokens = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
+        source_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in src_token_ids]
+        tgt_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
+        generated_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
         with cols[0]:
             # Unchanged
             st.image(true_piece_paths["pianoroll_path"])

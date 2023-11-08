@@ -27,10 +27,13 @@ def main(
             train_translation_dataset=train_translation_dataset,
             val_translation_dataset=val_translation_dataset,
         )
-    start_token_id = train_dataset.encoder.token_to_id["<CLS>"]
+    start_token_id: int = train_dataset.encoder.token_to_id["<CLS>"]
+    pad_token_id: int = train_dataset.encoder.token_to_id["<PAD>"]
     config = T5Config(
         vocab_size=vocab_size(cfg),
         decoder_start_token_id=start_token_id,
+        pad_token_id=pad_token_id,
+        eos_token_id=pad_token_id,
         use_cache=False,
         d_model=cfg.model.d_model,
         d_kv=cfg.model.d_kv,
