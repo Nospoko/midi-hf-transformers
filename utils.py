@@ -20,7 +20,10 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
     pianoroll_path = save_base + ".png"
 
     if not os.path.exists(pianoroll_path):
-        ff.view.draw_pianoroll_with_velocities(piece)
+        if "mask" in piece.df.keys():
+            ff.view.draw_dual_pianoroll(piece)
+        else:
+            ff.view.draw_pianoroll_with_velocities(piece)
         plt.tight_layout()
         plt.savefig(pianoroll_path)
         plt.clf()

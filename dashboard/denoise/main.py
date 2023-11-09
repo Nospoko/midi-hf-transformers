@@ -156,12 +156,10 @@ def model_predictions_review(
     np.random.seed(random_seed)
     idxs: np.ndarray[int] = np.random.randint(len(dataset), size=n_samples)
 
-    cols = st.columns(3)
+    cols = st.columns(2)
     with cols[0]:
         st.markdown("### Unchanged")
     with cols[1]:
-        st.markdown("### Q. velocity")
-    with cols[2]:
         st.markdown("### Predicted")
 
     # predict velocities and get src, tgt and model output
@@ -181,13 +179,15 @@ def model_predictions_review(
         true_piece = MidiPiece(df=true_notes, source=record_source)
         true_piece.time_shift(-true_piece.df.start.min())
         try:
-            generated_df: pd.DataFrame = dataset.encoder.decode(src_token_ids, generated_token_ids)
-            generated_df = quantizer.apply_quantization(generated_df)
-            # create quantized piece with predicted velocities
-            pred_piece = MidiPiece(generated_df)
+            generated_df: pd.DataFrame = encoder.decode(src_token_ids, generated_token_ids)
+            df = quantizer.apply_quantization(generated_df)
+            df["mask"] = generated_df["mask"]
+            # create quantized piece with predicted notes
+            pred_piece = MidiPiece(df)
 
         except ValueError:
             generated_df = pd.DataFrame([[23, 1, 1, 1, 1]], columns=midi_columns)
+            generated_df["mask"] = [False]
             pred_piece = MidiPiece(generated_df)
 
         pred_piece.source = true_piece.source.copy()
