@@ -228,3 +228,104 @@ class MultiStartEncoder(MultiTokEncoder):
         starts = [int(token[6:]) for token in tokens if token not in self.specials]
 
         return starts
+
+
+class MultiMidiEncoder(MultiTokEncoder):
+    """
+    Encoder for pre-training T5 with denoising objective, to be used as a base_encoder for MaskedMidiEncoders
+    and a parent class for fine-tuning after implementing tokenize_tgt and untokenize_tgt methods.
+    """
+
+    def __init__(
+        self,
+        quantization_cfg: DictConfig,
+        time_quantization_method: str,
+        max_time: int = 100,
+        max_duration: int = 10,
+        max_velocity: int = 128,
+    ):
+        super().__init__()
+        self.quantization_cfg = quantization_cfg
+        self.max_time = max_time
+        self.max_duration = max_duration
+        self.max_velocity = max_velocity
+        self.time_quantization_method = time_quantization_method
+        self.time_key = self.time_quantization_method + "_bin"
+        self.specials = ["<CLS>", "<PAD>"]
+
+        self.vocab = list(self.specials)
+
+        # add midi tokens to vocab
+        self._build_vocab()
+        self.token_to_id = {token: it for it, token in enumerate(self.vocab)}
+
+    def __rich_repr__(self):
+        yield "MultiMidiEncoder"
+        yield "vocab_size", self.vocab_size
+
+    @property
+    def vocab_size(self) -> int:
+        return len(self.vocab)
+
+    def _build_vocab(self):
+        time_tokens_product = itertools.product(
+            range(self.max_time),
+            range(self.max_duration),
+        )
+
+        for pitch in range(21, 109):
+            self.vocab.append(f"PITCH-{pitch}")
+        for start, duration in time_tokens_product:
+            self.vocab.append(f"TIME-{start:0.0f}-{duration:0.0f}")
+        for start in range(self.max_time):
+            self.vocab.append(f"{self.time_quantization_method.upper()}-{start}")
+        for velocity in range(self.max_velocity):
+            self.vocab.append(f"VEL-{velocity:0.0f}")
+
+    def tokenize_src(self, record: dict) -> list[str]:
+        tokens = []
+        n_samples = len(record["pitch"])
+        for idx in range(n_samples):
+            pitch_token = f"PITCH-{record['pitch'][idx]:0.0f}"
+            time_token = f"TIME-{record[self.time_key][idx]}-{record['duration_bin'][idx]:0.0f}"
+            velocity_token = f"VEL-{record['velocity_bin'][idx]:0.0f}"
+            tokens += [pitch_token, time_token, velocity_token]
+
+        return tokens
+
+    def tokenize_tgt(self, record: dict) -> list[str]:
+        tokens = [f"VEL-{velocity:0.0f}" for velocity in record["velocity"]]
+        return tokens
+
+    def untokenize_src(self, tokens: list[str]) -> pd.DataFrame:
+        samples = []
+        buff = []
+        if tokens[0] == "<CLS>":
+            # get rid of cls token
+            tokens = tokens[1:]
+        for idx, token in enumerate(tokens):
+            if token == "<PAD>":
+                break
+            if idx % 3 == 0:
+                # pitch token
+                # [6:] to clear "PITCH-" prefix from a token
+                buff = [int(token[6:])]
+            elif idx % 3 == 1:
+                # time token
+                # [5:] to clear "TIME-" prefix from the token
+                buff += [int(txt) for txt in token[5:].split("-")]
+            else:
+                # velocity token
+                # [4:] to clear "VEL-" prefix from the token
+                buff.append(int(token[4:]))
+                samples.append(buff)
+
+        df = pd.DataFrame(samples, columns=["pitch", self.time_key, "duration_bin", "velocity_bin"])
+
+        return df
+
+    def untokenize_tgt(self, tokens: list[str]) -> list[int]:
+        # [4:] to clear "VEL-" prefix from the end of a token
+        velocities = [int(token[4:]) for token in tokens if token not in self.specials]
+
+        return velocities

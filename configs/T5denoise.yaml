@@ -17,6 +17,9 @@ time_quantization_method: start
 masking_probability: 0.15
 mask: notes
 
+encoder: start
+time_bins: 100
+
 dataset:
   sequence_duration: 5
   sequence_step: 2
