@@ -13,7 +13,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 
 from utils import vocab_size, piece_av_files
 from data.midiencoder import QuantizedMidiEncoder
-from data.multitokencoder import MultiVelocityEncoder
+from data.multitokencoder import MultiMidiEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
 from data.dataset import MaskedMidiDataset, load_cache_dataset
 from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
@@ -105,7 +105,7 @@ def model_predictions_review(
             n_dstart_bins=dataset_cfg.quantization.dstart,
         )
     if train_cfg.tokens_per_note == "multiple":
-        base_tokenizer = MultiVelocityEncoder(
+        base_tokenizer = MultiMidiEncoder(
             quantization_cfg=train_cfg.dataset.quantization,
             time_quantization_method=train_cfg.time_quantization_method,
         )
