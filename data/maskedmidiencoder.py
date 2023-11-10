@@ -1,6 +1,6 @@
-import pandas as pd
 import torch
 import numpy as np
+import pandas as pd
 
 from data.midiencoder import MidiEncoder
 from data.multitokencoder import MultiTokEncoder
@@ -10,7 +10,7 @@ class MaskedMidiEncoder:
     def __init__(self, base_encoder: MultiTokEncoder | MidiEncoder, masking_probability: float = 0.15):
         self.base_encoder = base_encoder
         self.masking_probability = masking_probability
-        self.num_sentinel = 100
+        self.num_sentinel: int = 100
 
         self.vocab = [f"<SENTINEL_{idx}>" for idx in range(self.num_sentinel)] + ["<MASK>"] + base_encoder.vocab
 

@@ -49,6 +49,13 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
 def vocab_size(cfg: DictConfig):
     # 88 pitches
     size: int = 88
+
+    if cfg.target == "denoise" or cfg.train.finetune:
+        size += 101  # 100 sentinel tokens and 1 mask token
+        size += 128  # velocity tokens
+        size += cfg.time_bins * 10  # start * duration or dstart * duration
+        return size
+
     if cfg.tokens_per_note == "single":
         # product size
         size = size * cfg.dataset.quantization[cfg.time_quantization_method]
@@ -75,9 +82,6 @@ def vocab_size(cfg: DictConfig):
     if cfg.target == "start":
         size += cfg.start_bins
 
-    if cfg.target == "denoise":
-        # add 100 sentinel tokens and 1 mask token
-        size += 101
     return size
 
 

@@ -4,7 +4,9 @@ train:
   batch_size: 8
   base_lr: 3e-4
   warmup: 4000
+  finetune: True
 
+pretrained_checkpoint: midi-T5-2023-11-07-12-53.pt
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
