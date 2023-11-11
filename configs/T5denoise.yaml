@@ -17,7 +17,7 @@ time_quantization_method: start
 masking_probability: 0.15
 mask: notes
 
-encoder: start
+encoder: velocity
 time_bins: 100
 
 dataset:
