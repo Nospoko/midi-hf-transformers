@@ -132,8 +132,6 @@ def create_masked_datasets(
         base_encoder=base_encoder,
         encoder=encoder,
     )
-    print(len(train_dataset.encoder.vocab))
-    print(vocab_size(cfg))
     
     val_dataset = MaskedMidiDataset(
         dataset=val_translation_dataset,
@@ -160,7 +158,6 @@ def create_datasets_finetune(
     # use the same token ids as used during pre-training
     tokenizer.vocab = pretraining_tokenizer.vocab
     tokenizer.token_to_id = pretraining_tokenizer.token_to_id
-    print(len(tokenizer.vocab))
     train_dataset = MyTokenizedMidiDataset(
         dataset=train_translation_dataset,
         dataset_cfg=cfg.dataset,
