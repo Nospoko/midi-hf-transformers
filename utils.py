@@ -54,6 +54,7 @@ def vocab_size(cfg: DictConfig):
         size += 101  # 100 sentinel tokens and 1 mask token
         size += 128  # velocity tokens
         size += cfg.time_bins * 10  # start * duration or dstart * duration
+        size += cfg.time_bins
         size += 2  # special tokens
 
         return size
