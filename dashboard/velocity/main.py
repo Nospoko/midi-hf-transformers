@@ -14,7 +14,8 @@ from transformers import T5Config, T5ForConditionalGeneration
 from data.quantizer import MidiATQuantizer
 from data.midiencoder import VelocityEncoder
 from utils import vocab_size, piece_av_files
-from data.multitokencoder import MultiVelocityEncoder
+from data.multitokencoder import MultiVelocityEncoder, MultiMidiEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
 
 # Set the layout of the Streamlit page
@@ -53,22 +54,41 @@ def main():
     st.markdown("Dataset config:")
     st.json(dataset_params, expanded=True)
 
+    if train_cfg.train.finetune:
+        tokenizer = MultiMidiEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
+        pretraining_tokenizer = MaskedMidiEncoder(
+            base_encoder=tokenizer,
+        )
+        # use the same token ids as used during pre-training
+        tokenizer.vocab = pretraining_tokenizer.vocab
+        tokenizer.token_to_id = pretraining_tokenizer.token_to_id
+        tokenizer.specials = pretraining_tokenizer.specials
+    elif train_cfg.tokens_per_note == "multiple":
+        tokenizer = MultiVelocityEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
+    else:
+        tokenizer = VelocityEncoder(
+            quantization_cfg=train_cfg.dataset.quantization,
+            time_quantization_method=train_cfg.time_quantization_method,
+        )
+    cls_token_id = tokenizer.token_to_id["<CLS>"]
+    pad_token_id = tokenizer.token_to_id["<PAD>"]
     config = T5Config(
         vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=0,
+        decoder_start_token_id=cls_token_id,
+        eos_token_id=pad_token_id,
+        pad_token_id=pad_token_id,
         use_cache=False,
     )
 
     model = T5ForConditionalGeneration(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval().to(DEVICE)
-
-    quantizer = MidiATQuantizer(
-        n_duration_bins=train_cfg.dataset.quantization.duration,
-        n_velocity_bins=train_cfg.dataset.quantization.velocity,
-        n_start_bins=train_cfg.dataset.quantization.start,
-        sequence_duration=train_cfg.dataset.sequence_duration,
-    )
 
     n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
@@ -82,17 +102,17 @@ def main():
     if mode == "Sequence predictions":
         model_predictions_review(
             model=model,
-            quantizer=quantizer,
             train_cfg=train_cfg,
             model_dir=model_dir,
+            tokenizer=tokenizer,
         )
 
 
 def model_predictions_review(
     model: nn.Module,
-    quantizer: MidiATQuantizer,
     train_cfg: DictConfig,
     model_dir: str,
+    tokenizer: MultiVelocityEncoder | MultiMidiEncoder | VelocityEncoder
 ):
     # load checkpoint, force dashboard device
     dataset_cfg = train_cfg.dataset
@@ -108,17 +128,6 @@ def model_predictions_review(
         split=split,
     )
 
-    if train_cfg.tokens_per_note == "multiple":
-        tokenizer = MultiVelocityEncoder(
-            quantization_cfg=train_cfg.dataset.quantization,
-            time_quantization_method=train_cfg.time_quantization_method,
-        )
-    else:
-        tokenizer = VelocityEncoder(
-            quantization_cfg=train_cfg.dataset.quantization,
-            time_quantization_method=train_cfg.time_quantization_method,
-        )
-
     dataset = MyTokenizedMidiDataset(
         dataset=val_translation_dataset,
         dataset_cfg=train_cfg.dataset,
@@ -129,12 +138,10 @@ def model_predictions_review(
     np.random.seed(random_seed)
     idxs = np.random.randint(len(dataset), size=n_samples)
 
-    cols = st.columns(3)
+    cols = st.columns(2)
     with cols[0]:
         st.markdown("### Unchanged")
     with cols[1]:
-        st.markdown("### Q. velocity")
-    with cols[2]:
         st.markdown("### Predicted")
 
     # predict velocities and get src, tgt and model output
@@ -151,7 +158,7 @@ def model_predictions_review(
             max_length = len(src_token_ids)
         generated_velocity = model.generate(src_token_ids.unsqueeze(0), max_length=max_length)
         generated_velocity = generated_velocity.squeeze(0)
-        generated_velocity = tokenizer.decode_tgt(generated_velocity)
+        decoded_velocity = tokenizer.decode_tgt(generated_velocity)
 
         # TODO start here
         # Reconstruct the sequence as recorded
@@ -163,7 +170,7 @@ def model_predictions_review(
         pred_piece_df = true_piece.df.copy()
 
         # change untokenized velocities to model predictions
-        pred_piece_df["velocity"] = generated_velocity
+        pred_piece_df["velocity"] = decoded_velocity
         pred_piece_df["velocity"] = pred_piece_df["velocity"].fillna(0)
 
         # create quantized piece with predicted velocities
@@ -181,15 +188,24 @@ def model_predictions_review(
         # create a dashboard
         st.json(record_source)
         cols = st.columns(2)
+        source_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in src_token_ids]
+        tgt_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
+        generated_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in generated_velocity]
         with cols[0]:
             # Unchanged
             st.image(true_piece_paths["pianoroll_path"])
             st.audio(true_piece_paths["mp3_path"])
+            st.markdown("**Source tokens:**")
+            st.markdown(source_tokens)
+            st.markdown("**Target tokens:**")
+            st.markdown(tgt_tokens)
 
         with cols[1]:
             # Predicted
             st.image(predicted_paths["pianoroll_path"])
             st.audio(predicted_paths["mp3_path"])
+            st.markdown("**Predicted tokens:**")
+            st.markdown(generated_tokens)
 
 
 if __name__ == "__main__":
