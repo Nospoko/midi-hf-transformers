@@ -28,7 +28,7 @@ def main(
         pretrain_cfg = OmegaConf.create(checkpoint["cfg"])
         pretrain_cfg.device = cfg.device
         pretrain_cfg.target = cfg.target
-        pretrain_cfg.train.finetune = True
+        pretrain_cfg.train.append({"finetune": True})
         cfg = pretrain_cfg
         train_dataset, val_dataset = create_datasets_finetune(
             cfg=cfg,

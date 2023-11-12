@@ -9,6 +9,7 @@ class MidiEncoder:
         self.token_to_id = None
         self.vocab = None
         self.time_key = None
+        self.specials = None
 
     def tokenize_src(self, record: dict) -> list[str]:
         raise NotImplementedError("Your encoder needs *tokenize* implementation")

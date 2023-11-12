@@ -11,7 +11,7 @@ class MaskedMidiEncoder:
         self.base_encoder = base_encoder
         self.masking_probability = masking_probability
         self.num_sentinel: int = 100
-
+        self.specials = [f"<SENTINEL_{idx}>" for idx in range(self.num_sentinel)] + ["<MASK>"] + base_encoder.specials
         self.vocab = [f"<SENTINEL_{idx}>" for idx in range(self.num_sentinel)] + ["<MASK>"] + base_encoder.vocab
 
         # add midi tokens to vocab
