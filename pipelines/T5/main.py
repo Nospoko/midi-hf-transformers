@@ -132,7 +132,7 @@ def create_masked_datasets(
         base_encoder=base_encoder,
         encoder=encoder,
     )
-    
+
     val_dataset = MaskedMidiDataset(
         dataset=val_translation_dataset,
         dataset_cfg=cfg.dataset,

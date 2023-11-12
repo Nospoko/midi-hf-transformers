@@ -11,12 +11,11 @@ from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from transformers import T5Config, T5ForConditionalGeneration
 
-from data.quantizer import MidiATQuantizer
 from data.midiencoder import VelocityEncoder
 from utils import vocab_size, piece_av_files
-from data.multitokencoder import MultiVelocityEncoder, MultiMidiEncoder
 from data.maskedmidiencoder import MaskedMidiEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
+from data.multitokencoder import MultiMidiEncoder, MultiVelocityEncoder
 
 # Set the layout of the Streamlit page
 st.set_page_config(layout="wide", page_title="Velocity Transformer", page_icon=":musical_keyboard")
@@ -112,7 +111,7 @@ def model_predictions_review(
     model: nn.Module,
     train_cfg: DictConfig,
     model_dir: str,
-    tokenizer: MultiVelocityEncoder | MultiMidiEncoder | VelocityEncoder
+    tokenizer: MultiVelocityEncoder | MultiMidiEncoder | VelocityEncoder,
 ):
     # load checkpoint, force dashboard device
     dataset_cfg = train_cfg.dataset
