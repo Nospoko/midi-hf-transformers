@@ -215,7 +215,6 @@ def model_predictions_review(
 
         with cols[1]:
             # Predicted
-
             fig = ff.view.draw_dual_pianoroll(pred_piece)
             st.pyplot(fig)
             from_fortepyan(pred_piece, key=key + 1)
