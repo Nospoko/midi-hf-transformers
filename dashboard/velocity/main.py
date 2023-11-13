@@ -9,11 +9,12 @@ import torch.nn as nn
 import streamlit as st
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
+from streamlit_pianoroll import from_fortepyan
 from transformers import T5Config, T5ForConditionalGeneration
 
+from utils import vocab_size
 from data.quantizer import MidiATQuantizer
 from data.midiencoder import VelocityEncoder
-from utils import vocab_size, piece_av_files
 from data.multitokencoder import MultiVelocityEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
 
@@ -171,25 +172,16 @@ def model_predictions_review(
 
         pred_piece.source = true_piece.source.copy()
 
-        # create files
-        true_save_base = os.path.join(model_dir, f"true_{record_id}")
-        true_piece_paths = piece_av_files(piece=true_piece, save_base=true_save_base)
-
-        predicted_save_base = os.path.join(model_dir, f"predicted_{record_id}")
-        predicted_paths = piece_av_files(piece=pred_piece, save_base=predicted_save_base)
-
         # create a dashboard
         st.json(record_source)
         cols = st.columns(2)
         with cols[0]:
             # Unchanged
-            st.image(true_piece_paths["pianoroll_path"])
-            st.audio(true_piece_paths["mp3_path"])
+            from_fortepyan(true_piece)
 
         with cols[1]:
             # Predicted
-            st.image(predicted_paths["pianoroll_path"])
-            st.audio(predicted_paths["mp3_path"])
+            from_fortepyan(pred_piece)
 
 
 if __name__ == "__main__":
