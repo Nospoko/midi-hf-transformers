@@ -1,6 +1,6 @@
 from huggingface_hub import hf_hub_download
 
-FILENAME_VELOCITY = "midi-T5-2023-10-20-16-03.pt"
+FILENAME_VELOCITY = "velocity-T5-2023-11-11-10-29.pt"
 FILENAME_DENOISE = "midi-T5-2023-11-11-10-29.pt"
 
 hf_hub_download(
