@@ -115,7 +115,6 @@ def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: in
 
     # remove special tokens
     labels[tgt == pad_idx] = pad_idx
-
     # average distance between label and target
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
 
