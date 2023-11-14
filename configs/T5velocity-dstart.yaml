@@ -25,7 +25,7 @@ dataset:
   quantization:
     dstart: 5
     duration: 5
-    velocity: 5
+    velocity: 3
 
 device: "cuda:0"
 
