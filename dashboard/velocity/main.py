@@ -157,6 +157,28 @@ def model_predictions_review(
     n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
 
+    start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
+    pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
+    config = T5Config(
+        vocab_size=vocab_size(train_cfg),
+        decoder_start_token_id=start_token_id,
+        pad_token_id=pad_token_id,
+        eos_token_id=pad_token_id,
+        use_cache=False,
+        d_model=train_cfg.model.d_model,
+        d_kv=train_cfg.model.d_kv,
+        d_ff=train_cfg.model.d_ff,
+        num_layers=train_cfg.model.num_layers,
+        num_heads=train_cfg.model.num_heads,
+    )
+
+    model = T5ForConditionalGeneration(config)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.eval().to(DEVICE)
+
+    n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
+    st.markdown(f"Model parameters: {n_parameters:.3f}M")
+
     n_samples = 5
     np.random.seed(random_seed)
     idxs = np.random.randint(len(dataset), size=n_samples)
