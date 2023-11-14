@@ -216,7 +216,7 @@ def train_epoch(
             if log:
                 wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist})
 
-        if it % log_frequency * 1000 == 1:
+        if it % log_frequency * 200 == 1:
             val_loss, val_dist = val_epoch(
                 dataloader=val_dataloader,
                 model=model,
