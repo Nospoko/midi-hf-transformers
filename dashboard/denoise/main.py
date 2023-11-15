@@ -5,13 +5,15 @@ import json
 import torch
 import numpy as np
 import pandas as pd
+import fortepyan as ff
 import streamlit as st
 from datasets import Dataset
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
+from streamlit_pianoroll import from_fortepyan
 from transformers import T5Config, T5ForConditionalGeneration
 
-from utils import vocab_size, piece_av_files
+from utils import vocab_size
 from data.midiencoder import QuantizedMidiEncoder
 from data.multitokencoder import MultiMidiEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
@@ -69,14 +71,12 @@ def main():
         model_predictions_review(
             checkpoint=checkpoint,
             train_cfg=train_cfg,
-            model_dir=model_dir,
         )
 
 
 def model_predictions_review(
     checkpoint: dict,
     train_cfg: DictConfig,
-    model_dir: str,
 ):
     # load checkpoint, force dashboard device
     dataset_cfg: DictConfig = train_cfg.dataset
@@ -186,18 +186,11 @@ def model_predictions_review(
             pred_piece = MidiPiece(df)
 
         except ValueError:
-            generated_df = pd.DataFrame([[23, 1, 1, 1, 1]], columns=midi_columns)
+            generated_df = pd.DataFrame([[23.0, 1.0, 1.0, 1.0, 1.0]], columns=midi_columns)
             generated_df["mask"] = [False]
             pred_piece = MidiPiece(generated_df)
 
         pred_piece.source = true_piece.source.copy()
-
-        # create files
-        true_save_base: str = os.path.join(model_dir, f"true_{record_id}")
-        true_piece_paths: dict = piece_av_files(piece=true_piece, save_base=true_save_base)
-
-        predicted_save_base: str = os.path.join(model_dir, f"predicted_{record_id}")
-        predicted_paths: dict = piece_av_files(piece=pred_piece, save_base=predicted_save_base)
 
         # create a dashboard
         st.json(record_source)
@@ -207,9 +200,8 @@ def model_predictions_review(
         tgt_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
         generated_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
         with cols[0]:
+            from_fortepyan(true_piece)
             # Unchanged
-            st.image(true_piece_paths["pianoroll_path"])
-            st.audio(true_piece_paths["mp3_path"])
             st.markdown("**Source tokens:**")
             st.markdown(source_tokens)
             st.markdown("**Target tokens:**")
@@ -217,8 +209,11 @@ def model_predictions_review(
 
         with cols[1]:
             # Predicted
-            st.image(predicted_paths["pianoroll_path"])
-            st.audio(predicted_paths["mp3_path"])
+
+            fig = ff.view.draw_dual_pianoroll(pred_piece)
+            st.pyplot(fig)
+            print(pred_piece)
+            from_fortepyan(pred_piece)
             st.markdown("**Predicted tokens:**")
             st.markdown(generated_tokens)
 
