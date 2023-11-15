@@ -71,14 +71,12 @@ def main():
         model_predictions_review(
             checkpoint=checkpoint,
             train_cfg=train_cfg,
-            model_dir=model_dir,
         )
 
 
 def model_predictions_review(
     checkpoint: dict,
     train_cfg: DictConfig,
-    model_dir: str,
 ):
     # load checkpoint, force dashboard device
     dataset_cfg: DictConfig = train_cfg.dataset
