@@ -50,7 +50,7 @@ def vocab_size(cfg: DictConfig):
     # 88 pitches
     size: int = 88
 
-    if cfg.target == "denoise" or cfg.train.finetune:
+    if cfg.target == "denoise" or ("finetune" in cfg.train and cfg.train.finetune):
         size += 101  # 100 sentinel tokens and 1 mask token
         size += 128  # velocity tokens
         size += cfg.time_bins * 10  # start * duration or dstart * duration
