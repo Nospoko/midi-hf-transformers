@@ -29,7 +29,7 @@ def main(
         # make current cfg fit pre-train cfg
         pretrain_cfg.device = cfg.device
         pretrain_cfg.target = cfg.target
-        pretrain_cfg.train.append({"finetune": True})
+        pretrain_cfg.train.finetune = True
         pretrain_cfg.run_name = cfg.run_name
         cfg = pretrain_cfg
 
