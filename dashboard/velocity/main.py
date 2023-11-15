@@ -53,7 +53,7 @@ def main():
     st.markdown("Dataset config:")
     st.json(dataset_params, expanded=True)
 
-    if train_cfg.train.finetune:
+    if "finetune" in train_cfg.train and train_cfg.train.finetune:
         tokenizer = MultiMidiEncoder(
             quantization_cfg=train_cfg.dataset.quantization,
             time_quantization_method=train_cfg.time_quantization_method,

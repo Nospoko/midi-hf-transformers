@@ -12,10 +12,10 @@ from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
-from data.midiencoder import MidiEncoder
 from data.multitokencoder import MultiTokEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder
+from data.midiencoder import MidiEncoder, VelocityEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
-from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
 
 def build_AT_translation_dataset(
@@ -363,23 +363,22 @@ def load_cache_dataset(
 def main():
     dataset_name = "roszcz/maestro-v1-sustain"
     dataset_cfg = {
-        "sequence_duration": 5,
-        "sequence_step": 10,
+        "sequence_len": 128,
+        "sequence_step": 42,
         "quantization": {
             "duration": 3,
             "velocity": 3,
             # 650 start bins sound nice :)
-            "start": 20,
+            "dstart": 3,
         },
     }
     cfg = OmegaConf.create(dataset_cfg)
     dataset = load_cache_dataset(cfg, dataset_name, split="test")
 
-    quantizer = MidiATQuantizer(
+    quantizer = MidiQuantizer(
         n_duration_bins=cfg.quantization.duration,
         n_velocity_bins=cfg.quantization.velocity,
-        n_start_bins=cfg.quantization.start,
-        sequence_duration=cfg.sequence_duration,
+        n_dstart_bins=cfg.quantization.dstart,
     )
 
     lengths = [len(record["pitch"]) for record in dataset]
@@ -397,22 +396,16 @@ def main():
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
-    from data.multitokencoder import MultiVelocityEncoder
-
     # this is for testing and debugging btw
-    base_encoder = MultiVelocityEncoder(cfg.quantization, time_quantization_method="start")
-    encoder = MaskedNoteEncoder(base_encoder=base_encoder, masking_probability=0.3)
-    test_dataset = MaskedMidiDataset(
+    encoder = VelocityEncoder(cfg.quantization, time_quantization_method="dstart")
+    test_dataset = MyTokenizedMidiDataset(
+        encoder=encoder,
         dataset=dataset,
         dataset_cfg=cfg,
-        base_encoder=base_encoder,
-        encoder=encoder,
     )
     record = test_dataset[90]
     print([encoder.vocab[token] for token in record["source_token_ids"]])
-
-    df = test_dataset.encoder.decode(record["source_token_ids"], record["target_token_ids"])
-    print(df)
+    print([encoder.vocab[token] for token in record["target_token_ids"]])
 
 
 if __name__ == "__main__":
