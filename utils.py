@@ -51,11 +51,20 @@ def vocab_size(cfg: DictConfig):
     size: int = 88
 
     if cfg.target == "denoise" or ("finetune" in cfg.train and cfg.train.finetune):
-        size += 101  # 100 sentinel tokens and 1 mask token
+        if cfg.tokens_per_note == "single":
+            # product size
+            size = size * cfg.dataset.quantization[cfg.time_quantization_method]
+            size = size * cfg.dataset.quantization.duration
+            size = size * cfg.dataset.quantization.velocity
+            # velocity tokens
+            size += 128
+            size += cfg.time_bins * 10
+            size += 103
+            return size
+        size += 103  # 100 sentinel tokens, 1 mask token and 2 special tokens
         size += 128  # velocity tokens
         size += cfg.time_bins * 10  # start * duration or dstart * duration
         size += cfg.time_bins
-        size += 2  # special tokens
 
         return size
 
