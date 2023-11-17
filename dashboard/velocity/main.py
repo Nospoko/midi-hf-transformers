@@ -203,7 +203,7 @@ def model_predictions_review(
         pred_piece.source = true_piece.source.copy()
 
         # create a dashboard
-        st.json(record_source)
+        st.json(record_source, expanded=False)
         cols = st.columns(2)
         with cols[0]:
             # Unchanged
