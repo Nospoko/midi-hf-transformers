@@ -7,7 +7,7 @@ train:
   warmup: 4000
 
 
-pretrained_checkpoint: midi-T5-2023-11-15-17-18git status.pt
+pretrained_checkpoint: midi-T5-2023-11-15-17-18.pt
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: velocity
