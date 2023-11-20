@@ -212,7 +212,6 @@ def model_predictions_review(
 
             fig = ff.view.draw_dual_pianoroll(pred_piece)
             st.pyplot(fig)
-            print(pred_piece)
             from_fortepyan(pred_piece)
             st.markdown("**Predicted tokens:**")
             st.markdown(generated_tokens)

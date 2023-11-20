@@ -89,15 +89,21 @@ class MaskedMidiEncoder:
         src_it: int = 0
         tgt_it: int = 0
         token_ids: list[int] = []
+        mask_ids: list[int] = []
+        note_it: int = 0
         while src_it < len(src_token_ids) and tgt_it < len(tgt_token_ids):
             if src_token_ids[src_it] < self.num_sentinel:
                 while tgt_it < len(tgt_token_ids) and tgt_token_ids[tgt_it] >= self.num_sentinel:
                     token_ids.append(tgt_token_ids[tgt_it])
+                    mask_ids.append(note_it)
+
+                    note_it += 1
                     tgt_it += 1
                 src_it += 1
             elif tgt_token_ids[tgt_it] < self.num_sentinel:
                 while src_it < len(src_token_ids) and src_token_ids[src_it] >= self.num_sentinel:
                     token_ids.append(src_token_ids[src_it])
+                    note_it += 1
                     src_it += 1
                 tgt_it += 1
             else:
@@ -105,7 +111,11 @@ class MaskedMidiEncoder:
                 tgt_it += 1
 
         tokens: list[str] = [self.vocab[token_id] for token_id in token_ids]
-        return self.base_encoder.untokenize_src(tokens)
+        df: pd.DataFrame = self.base_encoder.untokenize_src(tokens)
+        mask_ids_column = np.zeros_like(df["pitch"], dtype=bool)
+        mask_ids_column[mask_ids] = True
+        df["mask"] = mask_ids_column
+        return df
 
 
 class MaskedNoteEncoder(MaskedMidiEncoder):
