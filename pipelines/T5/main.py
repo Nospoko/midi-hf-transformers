@@ -30,6 +30,7 @@ def main(
         pretrain_cfg.device = cfg.device
         pretrain_cfg.target = cfg.target
         pretrain_cfg.train.finetune = True
+        pretrain_cfg.train.base_lr = cfg.train.base_lr
         pretrain_cfg.run_name = cfg.run_name
         cfg = pretrain_cfg
 
