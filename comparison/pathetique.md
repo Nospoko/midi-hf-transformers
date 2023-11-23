@@ -148,7 +148,7 @@ dataset:
 
 ```
 When using warmup_steps=4000, the midi-translation learning rate starts from 2e-7 and rises up to 1e-3 before starting to drop.
-![learning_rate_schedule.png](learning_rate_schedule.png)
+![learning_rate_schedule](https://github.com/Nospoko/midi-hf-transformers/assets/74838859/96dff214-117e-4b56-bc38-72c571cbed5c)
 
 Constant learning rate of 3e-6 was used in midi-hf-transformers model.
 
@@ -164,7 +164,8 @@ val_dist: 4.682
 ```
 The predictions look like the model knows what it is doing and as if he was really trying to play some
 emotional music:
-![img.png](img.png)
+![img](https://github.com/Nospoko/midi-hf-transformers/assets/74838859/c9db190f-f004-4538-8eee-cc6c5a279a02)
+
 ##### midi-hf-transformers
 [wandb](https://wandb.ai/wmatejuk/midi-hf-transformer/runs/pcgwhde7?workspace=user-wmatejuk)
 
@@ -175,7 +176,7 @@ val_dist: 11.724
 Its 2.5 times larger distance than midi-translation and still is one of the best reached by the HF models.
 
 The results look reaaaally flat:
-![img_1.png](img_1.png)
+![img_1](https://github.com/Nospoko/midi-hf-transformers/assets/74838859/234f4dbf-5083-47fb-b7a6-7f717ff78586)
 
 After looking through prediction on train split it seems like the model is learning to predict the mean
 of the velocities and spam them for every note instead of actual, more interesting results.
