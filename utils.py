@@ -1,9 +1,12 @@
 import os
+from math import sqrt
 
+import torch
 import pretty_midi
 import fortepyan as ff
 import matplotlib.pyplot as plt
 from fortepyan import MidiPiece
+from omegaconf import DictConfig
 import fortepyan.audio.render as render_audio
 
 
@@ -17,7 +20,10 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
     pianoroll_path = save_base + ".png"
 
     if not os.path.exists(pianoroll_path):
-        ff.view.draw_pianoroll_with_velocities(piece)
+        if "mask" in piece.df.keys():
+            ff.view.draw_dual_pianoroll(piece)
+        else:
+            ff.view.draw_pianoroll_with_velocities(piece)
         plt.tight_layout()
         plt.savefig(pianoroll_path)
         plt.clf()
@@ -38,3 +44,60 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
         "pianoroll_path": pianoroll_path,
     }
     return paths
+
+
+def vocab_size(cfg: DictConfig):
+    # 88 pitches
+    size: int = 88
+    if cfg.tokens_per_note == "single":
+        # product size
+        size = size * cfg.dataset.quantization[cfg.time_quantization_method]
+        size = size * cfg.dataset.quantization.duration
+        size = size * cfg.dataset.quantization.velocity
+        # velocity tokens
+        size += 128
+        # special tokens
+        size += 2
+        return size
+
+    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
+
+    # 2 special tokens - <CLS> and <PAD>
+    size += 2
+    # time tokens
+    size += values[0] * values[1]
+    # velocity tokens
+    if cfg.target == "velocity":
+        size += 128
+        return size
+    size += values[2]
+
+    if cfg.target == "start":
+        size += cfg.start_bins
+
+    if cfg.target == "denoise":
+        # add 100 sentinel tokens and 1 mask token
+        size += 101
+    return size
+
+
+def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: int = 1) -> torch.Tensor:
+    labels = out.argmax(1).to(float)
+    tgt[tgt == -100] = pad_idx
+    tgt = tgt[tgt != pad_idx]
+    # make labels fixed length same as target
+    labels = labels[: len(tgt)]
+
+    # remove special tokens
+    labels[tgt == pad_idx] = pad_idx
+
+    # average distance between label and target
+    return torch.dist(labels, tgt.to(float), p=1) / len(labels)
+
+
+def learning_rate_schedule(step: int, warmup: int):
+    return 1 / sqrt(max(step, warmup))
+
+
+def debug_lr_schedule(step: int):
+    return 1e-4 * 10 ** ((step // 10) / 20)

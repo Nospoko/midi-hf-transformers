@@ -2,7 +2,7 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 3e-4
+  base_lr: 1e-5
   warmup: 4000
 
 model_name: T5
@@ -12,15 +12,15 @@ seed: 26
 
 overfit: False
 
-tokens_per_note: "multiple"
-time_quantization_method: start
+tokens_per_note: "single"
+time_quantization_method: dstart
 dataset:
-  sequence_duration: 5
-  sequence_step: 2
+  sequence_len: 128
+  sequence_step: 42
 
   quantization:
-    start: 20
-    duration: 3
+    dstart: 5
+    duration: 5
     velocity: 3
 
 device: "cuda:0"
