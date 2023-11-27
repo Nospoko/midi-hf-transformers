@@ -9,12 +9,13 @@ import fortepyan as ff
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from omegaconf import OmegaConf, DictConfig
-from data_new.multitokencoder import MultiTokEncoder
 from torch.utils.data import Dataset as TorchDataset
-from data_new.maskedmidiencoder import MaskedMidiEncoder
-from data_new.midiencoder import MidiEncoder, VelocityEncoder
-from data_new.quantizer import MidiQuantizer, MidiATQuantizer
 from datasets import Dataset, load_dataset, concatenate_datasets
+
+from comparison.data_new.multitokencoder import MultiTokEncoder
+from comparison.data_new.maskedmidiencoder import MaskedMidiEncoder
+from comparison.data_new.midiencoder import MidiEncoder, VelocityEncoder
+from comparison.data_new.quantizer import MidiQuantizer, MidiATQuantizer
 
 
 def build_AT_translation_dataset(
