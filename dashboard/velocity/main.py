@@ -6,15 +6,14 @@ import torch
 import numpy as np
 import pandas as pd
 import fortepyan as ff
-
 import streamlit as st
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from streamlit_pianoroll import from_fortepyan
 from transformers import T5Config, T5ForConditionalGeneration
 
-from data.midiencoder import VelocityEncoder
 from utils import vocab_size
+from data.midiencoder import VelocityEncoder
 from data.maskedmidiencoder import MaskedMidiEncoder
 from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
 from data.multitokencoder import MultiMidiEncoder, MultiVelocityEncoder

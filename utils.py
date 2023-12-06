@@ -68,6 +68,12 @@ def vocab_size(cfg: DictConfig):
 
         return size
 
+    return vocab_size_classic(cfg)
+
+
+def vocab_size_classic(cfg: DictConfig):
+    # 88 pitches
+    size: int = 88
     if cfg.tokens_per_note == "single":
         # product size
         size = size * cfg.dataset.quantization[cfg.time_quantization_method]
@@ -94,6 +100,9 @@ def vocab_size(cfg: DictConfig):
     if cfg.target == "start":
         size += cfg.start_bins
 
+    if cfg.target == "denoise":
+        # add 100 sentinel tokens and 1 mask token
+        size += 101
     return size
 
 
