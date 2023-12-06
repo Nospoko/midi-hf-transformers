@@ -200,6 +200,8 @@ def model_predictions_review(
         tgt_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
         generated_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
         with cols[0]:
+            fig = ff.view.draw_dual_pianoroll(true_piece)
+            st.pyplot(fig)
             from_fortepyan(true_piece)
             # Unchanged
             st.markdown("**Source tokens:**")

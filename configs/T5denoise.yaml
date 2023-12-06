@@ -26,9 +26,9 @@ dataset:
   sequence_step: 2
 
   quantization:
-    start: 20
+    start: 50
     duration: 5
-    velocity: 5
+    velocity: 3
 
 device: "cuda:0"
 

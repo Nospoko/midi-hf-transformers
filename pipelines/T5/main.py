@@ -26,7 +26,7 @@ def main(
     elif cfg.train.finetune:
         checkpoint = torch.load(f"checkpoints/denoise/{cfg.pretrained_checkpoint}", map_location=cfg.device)
         pretrain_cfg = OmegaConf.create(checkpoint["cfg"])
-        # make current cfg fit pre-train cfg
+        # make current cfg fit pre-train cfg but keep relevant info from current config
         pretrain_cfg.device = cfg.device
         pretrain_cfg.target = cfg.target
         pretrain_cfg.train.finetune = True

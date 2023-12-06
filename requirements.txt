@@ -8,7 +8,7 @@ omegaconf~=2.3.0
 pandas~=2.0.0
 PyYAML~=5.4.1
 streamlit~=1.25.0
-torch~=2.0.0
+torch~=2.1.1
 tqdm~=4.65.0
 transformers~=4.28.1
 
