@@ -164,6 +164,9 @@ def model_predictions_review(
 
     # predict velocities and get src, tgt and model output
     print("Making predictions ...")
+
+    # widget id for streamlit_pianoroll widget
+    key = 0
     for record_id in idxs:
         # Numpy to int :(
         record: dict = dataset.get_complete_record(int(record_id))
@@ -199,10 +202,11 @@ def model_predictions_review(
         source_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in src_token_ids]
         tgt_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in record["target_token_ids"]]
         generated_tokens: list[str] = [dataset.encoder.vocab[idx] for idx in generated_token_ids]
+
         with cols[0]:
-            fig = ff.view.draw_dual_pianoroll(true_piece)
+            fig = ff.view.draw_pianoroll_with_velocities(true_piece)
             st.pyplot(fig)
-            from_fortepyan(true_piece)
+            from_fortepyan(true_piece, key=key)
             # Unchanged
             st.markdown("**Source tokens:**")
             st.markdown(source_tokens)
@@ -214,9 +218,10 @@ def model_predictions_review(
 
             fig = ff.view.draw_dual_pianoroll(pred_piece)
             st.pyplot(fig)
-            from_fortepyan(pred_piece)
+            from_fortepyan(pred_piece, key=key + 1)
             st.markdown("**Predicted tokens:**")
             st.markdown(generated_tokens)
+        key += 2
 
 
 if __name__ == "__main__":

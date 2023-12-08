@@ -45,6 +45,9 @@ def main(
             train_translation_dataset=train_translation_dataset,
             val_translation_dataset=val_translation_dataset,
         )
+    if cfg.pre_defined_model is not None:
+        model_cfg = OmegaConf.load(f"configs/architectures/{cfg.pre_defined_model}.yaml")
+        cfg.model = model_cfg
 
     start_token_id: int = train_dataset.encoder.token_to_id["<CLS>"]
     pad_token_id: int = train_dataset.encoder.token_to_id["<PAD>"]
