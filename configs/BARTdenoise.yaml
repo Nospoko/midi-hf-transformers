@@ -15,7 +15,7 @@ overfit: False
 
 tokens_per_note: multiple
 time_quantization_method: start
-masking_probability: 0.15
+masking_probability: 0.3
 mask: notes
 
 encoder: velocity
