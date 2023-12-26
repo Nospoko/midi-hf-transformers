@@ -50,6 +50,7 @@ def train_model(
         # Train model for one epoch
         t_loss, t_dist = train_epoch(
             dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
             model=model,
             optimizer=optimizer,
             pad_idx=pad_idx,
@@ -145,6 +146,7 @@ def save_checkpoint(
 
 def train_epoch(
     dataloader: Iterable,
+    val_dataloader: Iterable,
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
     pad_idx: int = 1,
@@ -213,6 +215,17 @@ def train_epoch(
             # log the loss each to Weights and Biases
             if log:
                 wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist})
+
+        if it % log_frequency * 200 == 1:
+            val_loss, val_dist = val_epoch(
+                dataloader=val_dataloader,
+                model=model,
+                pad_idx=pad_idx,
+                cls_idx=cls_idx,
+                device=device,
+            )
+            if log:
+                wandb.log({"val/loss_step": val_loss, "val/dist_step": val_dist})
 
     # Return average loss over all tokens and updated train state
     return total_loss / len(dataloader), total_dist / len(dataloader)
