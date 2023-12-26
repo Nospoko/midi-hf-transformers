@@ -6,7 +6,6 @@ import torch
 import numpy as np
 import pandas as pd
 import fortepyan as ff
-
 import streamlit as st
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
