@@ -20,7 +20,10 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
     pianoroll_path = save_base + ".png"
 
     if not os.path.exists(pianoroll_path):
-        ff.view.draw_pianoroll_with_velocities(piece)
+        if "mask" in piece.df.keys():
+            ff.view.draw_dual_pianoroll(piece)
+        else:
+            ff.view.draw_pianoroll_with_velocities(piece)
         plt.tight_layout()
         plt.savefig(pianoroll_path)
         plt.clf()
@@ -44,11 +47,48 @@ def piece_av_files(piece: MidiPiece, save_base: str) -> dict:
 
 
 def vocab_size(cfg: DictConfig):
-    # 88 piano keys
-    size = 88
+    # 88 pitches
+    size: int = 88
+
+    if cfg.target == "denoise" or ("finetune" in cfg.train and cfg.train.finetune):
+        if cfg.tokens_per_note == "single":
+            # product size
+            size = size * cfg.dataset.quantization[cfg.time_quantization_method]
+            size = size * cfg.dataset.quantization.duration
+            size = size * cfg.dataset.quantization.velocity
+            # velocity tokens
+            size += 128
+            size += cfg.time_bins * 10
+            size += 103
+            return size
+        size += 103  # 100 sentinel tokens, 1 mask token and 2 special tokens
+        size += 128  # velocity tokens
+        size += cfg.time_bins * 10  # start * duration or dstart * duration
+        size += cfg.time_bins
+
+        return size
+
+    return vocab_size_classic(cfg)
+
+
+def vocab_size_classic(cfg: DictConfig):
+    # 88 pitches
+    size: int = 88
+    if cfg.tokens_per_note == "single":
+        # product size
+        size = size * cfg.dataset.quantization[cfg.time_quantization_method]
+        size = size * cfg.dataset.quantization.duration
+        size = size * cfg.dataset.quantization.velocity
+        # velocity tokens
+        size += 128
+        # special tokens
+        size += 2
+        return size
+
+    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
+
     # 2 special tokens - <CLS> and <PAD>
     size += 2
-    values = [cfg.dataset.quantization[key] for key in cfg.dataset.quantization]
     # time tokens
     size += values[0] * values[1]
     # velocity tokens
@@ -59,22 +99,22 @@ def vocab_size(cfg: DictConfig):
 
     if cfg.target == "start":
         size += cfg.start_bins
+
+    if cfg.target == "denoise":
+        # add 100 sentinel tokens and 1 mask token
+        size += 101
     return size
 
 
 def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: int = 1) -> torch.Tensor:
     labels = out.argmax(1).to(float)
     tgt[tgt == -100] = pad_idx
-
-    # remove special tokens
-    labels = labels[labels != pad_idx]
     tgt = tgt[tgt != pad_idx]
-    # 0 is <CLS> token id
-    labels = labels[labels != 0]
-    tgt = tgt[tgt != 0]
     # make labels fixed length same as target
     labels = labels[: len(tgt)]
 
+    # remove special tokens
+    labels[tgt == pad_idx] = pad_idx
     # average distance between label and target
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
 

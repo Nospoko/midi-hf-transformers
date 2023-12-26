@@ -2,26 +2,32 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 3e-4
+  base_lr: 3e-5
   warmup: 4000
+  finetune: False
 
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
-target: start
-start_bins: 400
+target: denoise
 seed: 26
 
 overfit: False
 
 tokens_per_note: multiple
 time_quantization_method: start
+masking_probability: 0.15
+mask: notes
+
+encoder: velocity
+time_bins: 100
+
 dataset:
   sequence_duration: 5
   sequence_step: 2
 
   quantization:
-    start: 20
-    duration: 3
+    start: 50
+    duration: 5
     velocity: 3
 
 device: "cuda:0"

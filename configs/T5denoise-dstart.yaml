@@ -1,27 +1,33 @@
 train:
   num_epochs: 5
-  accum_iter: 10
-  batch_size: 8
-  base_lr: 3e-4
+  accum_iter: 5
+  batch_size: 2
+  base_lr: 3e-5
   warmup: 4000
+  finetune: False
 
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
-target: start
-start_bins: 400
+target: denoise
 seed: 26
 
 overfit: False
 
-tokens_per_note: multiple
-time_quantization_method: start
+tokens_per_note: single
+time_quantization_method: dstart
+masking_probability: 0.2
+mask: tokens
+
+encoder: velocity
+time_bins: 100
+
 dataset:
-  sequence_duration: 5
-  sequence_step: 2
+  sequence_len: 128
+  sequence_step: 42
 
   quantization:
-    start: 20
-    duration: 3
+    dstart: 5
+    duration: 5
     velocity: 3
 
 device: "cuda:0"
@@ -32,7 +38,6 @@ run_name: midi-T5-${now:%Y-%m-%d-%H-%M}
 project: "midi-hf-transformer"
 
 pre_defined_model: null
-
 model:
   d_model: 512
   d_kv: 64

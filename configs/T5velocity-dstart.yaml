@@ -2,26 +2,29 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 3e-4
+  base_lr: 3e-5
+  finetune: True
   warmup: 4000
 
+
+pretrained_checkpoint: midi-T5-2023-11-15-17-18.pt
 model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
-target: start
-start_bins: 400
+target: velocity
 seed: 26
+time_bins: 100
 
 overfit: False
 
-tokens_per_note: multiple
-time_quantization_method: start
+tokens_per_note: "single"
+time_quantization_method: dstart
 dataset:
-  sequence_duration: 5
-  sequence_step: 2
+  sequence_len: 128
+  sequence_step: 42
 
   quantization:
-    start: 20
-    duration: 3
+    dstart: 5
+    duration: 5
     velocity: 3
 
 device: "cuda:0"
@@ -38,4 +41,5 @@ model:
   d_kv: 64
   d_ff: 2048
   num_layers: 6
+  num_decoder_layers: None
   num_heads: 8

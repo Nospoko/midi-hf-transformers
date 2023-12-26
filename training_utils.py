@@ -2,7 +2,6 @@ import time
 from typing import Iterable
 
 import torch
-import einops
 import torch.nn as nn
 from tqdm import tqdm
 from torch.nn.functional import pad
@@ -22,6 +21,7 @@ def train_model(
 ) -> nn.Module:
     model.to(cfg.device)
     pad_idx = train_dataset.encoder.token_to_id["<PAD>"]
+    cls_idx = train_dataset.encoder.token_to_id["<CLS>"]
 
     def collate_fn(batch):
         return collate(batch, pad_idx)
@@ -50,9 +50,11 @@ def train_model(
         # Train model for one epoch
         t_loss, t_dist = train_epoch(
             dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
             model=model,
             optimizer=optimizer,
             pad_idx=pad_idx,
+            cls_idx=cls_idx,
             accum_iter=cfg.train.accum_iter,
             log=cfg.log,
             log_frequency=cfg.log_frequency,
@@ -67,6 +69,7 @@ def train_model(
             model=model,
             device=cfg.device,
             pad_idx=pad_idx,
+            cls_idx=cls_idx,
         )
 
         if v_loss <= best_test_loss:
@@ -143,30 +146,32 @@ def save_checkpoint(
 
 def train_epoch(
     dataloader: Iterable,
+    val_dataloader: Iterable,
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
     pad_idx: int = 1,
+    cls_idx: int = 0,
     accum_iter: int = 1,
     log_frequency: int = 10,
     log: bool = False,
     device: str = "cpu",
 ) -> tuple[float, float]:
-    start = time.time()
-    total_loss = 0
-    total_dist = 0
-    tokens = 0
-    n_accum = 0
-    it = 0
+    start: float = time.time()
+    total_loss: float = 0
+    total_dist: float = 0
+    tokens: int = 0
+    n_accum: int = 0
+    it: int = 0
 
     # create progress bar
-    steps = len(dataloader)
+    steps: int = len(dataloader)
     progress_bar = tqdm(dataloader, total=steps)
     for batch in progress_bar:
-        src = batch["source_token_ids"].to(device)
-        tgt = batch["target_token_ids"].to(device)
-        n_tokens = tgt.numel()
+        src: torch.Tensor = batch["source_token_ids"].to(device)
+        tgt: torch.Tensor = batch["target_token_ids"].to(device)
+        n_tokens: int = tgt.numel()
         tgt[tgt == pad_idx] = -100
-        tgt[tgt == 0] = -100
+        tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx
 
         outputs = model(
@@ -176,8 +181,9 @@ def train_epoch(
         )
         out = outputs.logits
 
-        out_rearranged = einops.rearrange(out, "b n d -> (b n) d")
-        target = einops.rearrange(tgt, "b n -> (b n)")
+        out_rearranged = torch.reshape(out, [out.size(0) * out.size(1), out.size(-1)])
+        target = torch.reshape(tgt, [tgt.size(0) * tgt.size(1)])
+
         loss = outputs.loss
         loss.backward()
 
@@ -208,7 +214,18 @@ def train_epoch(
 
             # log the loss each to Weights and Biases
             if log:
-                wandb.log({"train/loss_step": loss.item()})
+                wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist})
+
+        if it % log_frequency * 200 == 1:
+            val_loss, val_dist = val_epoch(
+                dataloader=val_dataloader,
+                model=model,
+                pad_idx=pad_idx,
+                cls_idx=cls_idx,
+                device=device,
+            )
+            if log:
+                wandb.log({"val/loss_step": val_loss, "val/dist_step": val_dist})
 
     # Return average loss over all tokens and updated train state
     return total_loss / len(dataloader), total_dist / len(dataloader)
@@ -219,18 +236,20 @@ def val_epoch(
     dataloader: Iterable,
     model: nn.Module,
     pad_idx: int = 1,
+    cls_idx: int = 0,
     device: str = "cpu",
 ) -> tuple[float, float]:
-    total_tokens = 0
-    total_loss = 0
-    tokens = 0
-    total_dist = 0
+    total_tokens: int = 0
+    total_loss: float = 0
+    tokens: int = 0
+    total_dist: float = 0
 
     for batch in tqdm(dataloader):
-        src = batch["source_token_ids"].to(device)
-        tgt = batch["target_token_ids"].to(device)
-        n_tokens = tgt.numel()
+        src: torch.Tensor = batch["source_token_ids"].to(device)
+        tgt: torch.Tensor = batch["target_token_ids"].to(device)
+        n_tokens: int = tgt.numel()
         tgt[tgt == pad_idx] = -100
+        tgt[tgt == cls_idx] = -100
         attention_mask = src != pad_idx
 
         outputs = model(
@@ -240,8 +259,8 @@ def val_epoch(
         )
         out = outputs.logits
 
-        out_rearranged = einops.rearrange(out, "b n d -> (b n) d")
-        target = einops.rearrange(tgt, "b n -> (b n)")
+        out_rearranged = torch.reshape(out, [out.size(0) * out.size(1), out.size(-1)])
+        target = torch.reshape(tgt, [tgt.size(0) * tgt.size(1)])
         loss = outputs.loss
 
         total_loss += loss.item()

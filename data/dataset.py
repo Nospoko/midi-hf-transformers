@@ -12,7 +12,9 @@ from omegaconf import OmegaConf, DictConfig
 from torch.utils.data import Dataset as TorchDataset
 from datasets import Dataset, load_dataset, concatenate_datasets
 
-from data.tokenizer import MultiTokEncoder
+from data.multitokencoder import MultiTokEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder
+from data.midiencoder import MidiEncoder, VelocityEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
 
 
@@ -55,14 +57,13 @@ def piece_to_AT_records(
     sequence_step: int,
 ):
     chopped_sequences = []
-    n_samples = 1 + int(piece.df.iloc[-1]["start"] - sequence_duration) // sequence_step
     df = piece.df.copy()
-    for jt in range(n_samples):
-        start = jt * sequence_step
+    start = 0
+    while start < len(df.start):
         start_time = df["start"][start]
         finish = start
 
-        while df["start"][finish] - df["start"][start] < sequence_duration:
+        while finish < len(df["start"]) and df["start"][finish] - df["start"][start] < sequence_duration:
             finish += 1
 
         part = df.iloc[start:finish].copy()
@@ -86,7 +87,13 @@ def piece_to_AT_records(
             "velocity": part.velocity.values,
             "source": json.dumps(source),
         }
-        chopped_sequences.append(sequence)
+        if min(sequence["pitch"]) >= 21:
+            chopped_sequences.append(sequence)
+        if finish == len(df["start"]):
+            break
+        start = finish
+        while df["start"][finish] - df["start"][start] > sequence_step:
+            start -= 1
     return chopped_sequences
 
 
@@ -161,7 +168,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         self,
         dataset: Dataset,
         dataset_cfg: DictConfig,
-        encoder: MultiTokEncoder,
+        encoder: MultiTokEncoder | MidiEncoder,
     ):
         self.dataset = dataset
         self.dataset_cfg = dataset_cfg
@@ -195,14 +202,48 @@ class MyTokenizedMidiDataset(TorchDataset):
         out = self[idx] | self.dataset[idx]
         return out
 
-    @staticmethod
-    def add_start_token(src_token_ids: list[int], tgt_token_ids: list[int]):
+    def add_start_token(self, src_token_ids: list[int], tgt_token_ids: list[int]):
         # assert that start token always has idx = 0
-        cls_token_id = 0
+        cls_token_id = self.encoder.token_to_id["<CLS>"]
         src_token_ids.insert(0, cls_token_id)
         tgt_token_ids.insert(0, cls_token_id)
 
         return src_token_ids, tgt_token_ids
+
+
+class MaskedMidiDataset(MyTokenizedMidiDataset):
+    """
+    Midi dataset for T5 denoising objective.
+    """
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        dataset_cfg: DictConfig,
+        base_encoder: MidiEncoder | MultiTokEncoder,
+        encoder: MaskedMidiEncoder,
+    ):
+        super().__init__(dataset, dataset_cfg, base_encoder)
+        self.encoder = encoder
+
+    def __rich_repr__(self):
+        yield "MaskedMidiDataset"
+        yield "size", len(self)
+        # Nicer print
+        yield "cfg", OmegaConf.to_container(self.dataset_cfg)
+        yield "encoder", self.encoder
+
+    def __getitem__(self, idx: int) -> dict:
+        record = self.dataset[idx]
+        source_tokens_ids, target_tokens_ids = self.encoder.encode_record(record)
+
+        source_tokens_ids, target_tokens_ids = self.add_start_token(source_tokens_ids, target_tokens_ids)
+
+        out = {
+            "source_token_ids": torch.tensor(source_tokens_ids, dtype=torch.int64),
+            "target_token_ids": torch.tensor(target_tokens_ids, dtype=torch.int64),
+        }
+        return out
 
 
 def shard_and_build(
@@ -322,23 +363,22 @@ def load_cache_dataset(
 def main():
     dataset_name = "roszcz/maestro-v1-sustain"
     dataset_cfg = {
-        "sequence_duration": 5,
-        "sequence_step": 10,
+        "sequence_len": 128,
+        "sequence_step": 42,
         "quantization": {
             "duration": 3,
             "velocity": 3,
             # 650 start bins sound nice :)
-            "start": 20,
+            "dstart": 3,
         },
     }
     cfg = OmegaConf.create(dataset_cfg)
     dataset = load_cache_dataset(cfg, dataset_name, split="test")
 
-    quantizer = MidiATQuantizer(
+    quantizer = MidiQuantizer(
         n_duration_bins=cfg.quantization.duration,
         n_velocity_bins=cfg.quantization.velocity,
-        n_start_bins=cfg.quantization.start,
-        sequence_duration=cfg.sequence_duration,
+        n_dstart_bins=cfg.quantization.dstart,
     )
 
     lengths = [len(record["pitch"]) for record in dataset]
@@ -350,23 +390,22 @@ def main():
     plt.xlabel("idx")
     plt.show()
 
-    record = pd.DataFrame(dataset[0])
+    record = pd.DataFrame(dataset[90])
     record = quantizer.apply_quantization(record)
     piece = ff.MidiPiece(record)
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
     # this is for testing and debugging btw
-    encoder = MaskedMidiEncoder(cfg.quantization, time_quantization_method="start", masking_probability=0.3)
+    encoder = VelocityEncoder(cfg.quantization, time_quantization_method="dstart")
     test_dataset = MyTokenizedMidiDataset(
+        encoder=encoder,
         dataset=dataset,
         dataset_cfg=cfg,
-        encoder=encoder,
     )
-    print(test_dataset[90])
-
-    tokens = [encoder.vocab[idx] for idx in test_dataset[0]["source_token_ids"]]
-    print("src tokens: ", tokens)
+    record = test_dataset[90]
+    print([encoder.vocab[token] for token in record["source_token_ids"]])
+    print([encoder.vocab[token] for token in record["target_token_ids"]])
 
 
 if __name__ == "__main__":
