@@ -40,10 +40,10 @@ project: "midi-bart"
 pre_defined_model: null
 
 model:
-  encoder_layers: 6,
-  encoder_ffn_dim: 2048,
-  encoder_attention_heads: 8,
-  decoder_layers: 6,
-  decoder_ffn_dim: 2048,
-  decoder_attention_heads: 8,
+  encoder_layers: 6
+  encoder_ffn_dim: 2048
+  encoder_attention_heads: 8
+  decoder_layers: 6
+  decoder_ffn_dim: 2048
+  decoder_attention_heads: 8
   d_model: 512
