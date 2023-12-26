@@ -182,7 +182,7 @@ class MyTokenizedMidiDataset(TorchDataset):
         source_tokens_ids = self.encoder.encode_src(record)
         target_tokens_ids = self.encoder.encode_tgt(record)
 
-        source_tokens_ids, target_tokens_ids = self.add_cls_token(source_tokens_ids, target_tokens_ids)
+        source_tokens_ids, target_tokens_ids = self.add_start_token(source_tokens_ids, target_tokens_ids)
 
         out = {
             "source_token_ids": torch.tensor(source_tokens_ids, dtype=torch.int64),
@@ -195,8 +195,10 @@ class MyTokenizedMidiDataset(TorchDataset):
         out = self[idx] | self.dataset[idx]
         return out
 
-    def add_cls_token(self, src_token_ids: list[int], tgt_token_ids: list[int]):
-        cls_token_id = self.encoder.token_to_id["<CLS>"]
+    @staticmethod
+    def add_start_token(src_token_ids: list[int], tgt_token_ids: list[int]):
+        # assert that start token always has idx = 0
+        cls_token_id = 0
         src_token_ids.insert(0, cls_token_id)
         tgt_token_ids.insert(0, cls_token_id)
 
@@ -354,10 +356,8 @@ def main():
     print(piece.df)
     # ff.view.make_piano_roll_video(piece, "test.mp4")
 
-    from data.tokenizer import MultiVelocityEncoder
-
-    keys = ["pitch", "start_bin", "duration_bin", "velocity_bin"]
-    encoder = MultiVelocityEncoder(cfg.quantization, keys=keys)
+    # this is for testing and debugging btw
+    encoder = MaskedMidiEncoder(cfg.quantization, time_quantization_method="start", masking_probability=0.3)
     test_dataset = MyTokenizedMidiDataset(
         dataset=dataset,
         dataset_cfg=cfg,

@@ -1,14 +1,19 @@
 train:
   num_epochs: 5
   accum_iter: 10
-  batch_size: 16
-  lr: 3e-4
+  batch_size: 8
+  base_lr: 3e-4
+  warmup: 4000
 
+model_name: T5
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: start
 start_bins: 400
-max_padding: 180
+seed: 26
 
+overfit: False
+
+time_quantization_method: start
 dataset:
   sequence_duration: 5
   sequence_step: 2
@@ -20,6 +25,14 @@ dataset:
 
 device: "cpu"
 
+log: True
 log_frequency: 10
 run_name: midi-T5-${now:%Y-%m-%d-%H-%M}
 project: "midi-hf-transformer"
+
+model:
+  d_model: 512
+  d_kv: 64
+  d_ff: 2048
+  num_layers: 6
+  num_heads: 8

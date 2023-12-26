@@ -45,14 +45,11 @@ class MultiTokEncoder:
 
 
 class MultiVelocityEncoder(MultiTokEncoder):
-    def __init__(self, quantization_cfg: DictConfig, keys: list[str] = None):
+    def __init__(self, quantization_cfg: DictConfig, time_quantization_method: str):
         super().__init__()
         self.quantization_cfg = quantization_cfg
-        if keys is None:
-            self.keys = ["pitch", "dstart_bin", "duration_bin", "velocity_bin"]
-        else:
-            self.keys = keys
-
+        self.time_quantization_method = time_quantization_method
+        self.time_key = self.time_quantization_method + "_bin"
         self.specials = ["<CLS>", "<PAD>"]
 
         self.vocab = list(self.specials)
@@ -71,8 +68,7 @@ class MultiVelocityEncoder(MultiTokEncoder):
 
     def _build_vocab(self):
         time_tokens_product = itertools.product(
-            # weird because we want to use dstart if there is a dstart_bin key, and start if there is a start_bin
-            range(self.quantization_cfg[self.keys[1][:-4]]),
+            range(self.quantization_cfg[self.time_quantization_method]),
             range(self.quantization_cfg.duration),
         )
 
@@ -83,18 +79,18 @@ class MultiVelocityEncoder(MultiTokEncoder):
         # in hf T5 and BART we will use common vocabulary for tgt and src tokens ¯\_(ツ)_/¯
         # luckily, MultiTok is ideal for this
         # (UNLESS we will manually swap a final layer (somehow))
-        # TODO: find out how sharing tokens effects model performance.
+        # TODO: find out how sharing tokens affects model performance.
         #   (VEL-1, VEL-2, VEL-3 for 3 bins and also for 128 bins)
         for velocity in range(128):
             self.vocab.append(f"VEL-{velocity:0.0f}")
 
     def tokenize_src(self, record: dict) -> list[str]:
         tokens = []
-        n_samples = len(record[self.keys[0]])
+        n_samples = len(record["pitch"])
         for idx in range(n_samples):
-            pitch_token = f"PITCH-{record[self.keys[0]][idx]:0.0f}"
-            time_token = f"TIME-{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
-            velocity_token = f"VEL-{record[self.keys[3]][idx]:0.0f}"
+            pitch_token = f"PITCH-{record['pitch'][idx]:0.0f}"
+            time_token = f"TIME-{record[self.time_key][idx]}-{record['duration_bin'][idx]:0.0f}"
+            velocity_token = f"VEL-{record['velocity_bin'][idx]:0.0f}"
             tokens += [pitch_token, time_token, velocity_token]
 
         return tokens
@@ -121,14 +117,14 @@ class MultiVelocityEncoder(MultiTokEncoder):
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
-                buff.append(int(txt) for txt in token[5:].split("-"))
+                buff += [int(txt) for txt in token[5:].split("-")]
             else:
                 # velocity token
                 # [4:] to clear "VEL-" prefix from the token
                 buff.append(int(token[4:]))
                 samples.append(buff)
 
-        df = pd.DataFrame(samples, columns=self.keys)
+        df = pd.DataFrame(samples, columns=["pitch", self.time_key, "duration_bin", "velocity_bin"])
 
         return df
 
@@ -140,14 +136,12 @@ class MultiVelocityEncoder(MultiTokEncoder):
 
 
 class MultiStartEncoder(MultiTokEncoder):
-    def __init__(self, quantization_cfg: DictConfig, keys: list[str] = None, tgt_bins: int = 650):
+    def __init__(self, quantization_cfg: DictConfig, time_quantization_method: str, tgt_bins: int = 650):
         super().__init__()
         self.quantization_cfg = quantization_cfg
+        self.time_quantization_method = time_quantization_method
+        self.time_key = self.time_quantization_method + "_bin"
         self.tgt_bins = tgt_bins
-        if keys is None:
-            self.keys = ["pitch", "dstart_bin", "duration_bin", "velocity_bin"]
-        else:
-            self.keys = keys
 
         self.specials = ["<CLS>", "<PAD>"]
 
@@ -167,8 +161,7 @@ class MultiStartEncoder(MultiTokEncoder):
 
     def _build_vocab(self):
         time_tokens_product = itertools.product(
-            # weird because we want to use dstart if there is a dstart_bin key, and start if there is a start_bin key
-            range(self.quantization_cfg[self.keys[1][:-4]]),
+            range(self.quantization_cfg[self.time_quantization_method]),
             range(self.quantization_cfg.duration),
         )
 
@@ -183,11 +176,11 @@ class MultiStartEncoder(MultiTokEncoder):
 
     def tokenize_src(self, record: dict) -> list[str]:
         tokens = []
-        n_samples = len(record[self.keys[0]])
+        n_samples = len(record["pitch"])
         for idx in range(n_samples):
-            pitch_token = f"PITCH-{record[self.keys[0]][idx]:0.0f}"
-            time_token = f"TIME-{record[self.keys[1]][idx]}-{record[self.keys[2]][idx]:0.0f}"
-            velocity_token = f"VEL-{record[self.keys[3]][idx]:0.0f}"
+            pitch_token = f"PITCH-{record['pitch'][idx]:0.0f}"
+            time_token = f"TIME-{record[self.time_key][idx]}-{record['duration_bin'][idx]:0.0f}"
+            velocity_token = f"VEL-{record['velocity_bin'][idx]:0.0f}"
             tokens += [pitch_token, time_token, velocity_token]
 
         return tokens
@@ -221,14 +214,14 @@ class MultiStartEncoder(MultiTokEncoder):
             elif idx % 3 == 1:
                 # time token
                 # [5:] to clear "TIME-" prefix from the token
-                buff.append(int(txt) for txt in token[5:].split("-"))
+                buff += [int(txt) for txt in token[5:].split("-")]
             else:
                 # velocity token
                 # [4:] to clear "VEL-" prefix from the token
                 buff.append(int(token[4:]))
                 samples.append(buff)
 
-        df = pd.DataFrame(samples, columns=self.keys)
+        df = pd.DataFrame(samples, columns=["pitch", self.time_key, "duration_bin", "velocity_bin"])
 
         return df
 
