@@ -147,7 +147,7 @@ def model_predictions_review(
         )
 
         model = T5ForConditionalGeneration(config)
-    elif train_cfg.model_name == "BART":
+    else:
         config = BartConfig(
             vocab_size=vocab_size(train_cfg),
             decoder_start_token_id=start_token_id,
@@ -173,7 +173,7 @@ def model_predictions_review(
 
     n_samples: int = 5
     np.random.seed(random_seed)
-    idxs: np.ndarray[int] = np.random.randint(len(dataset), size=n_samples)
+    ids: int | np.ndarray[int] = np.random.randint(len(dataset), size=n_samples)
 
     cols = st.columns(2)
     with cols[0]:
@@ -186,7 +186,7 @@ def model_predictions_review(
 
     # widget id for streamlit_pianoroll widget
     key = 0
-    for record_id in idxs:
+    for record_id in ids:
         # Numpy to int :(
         record: dict = dataset.get_complete_record(int(record_id))
         record_source: dict = json.loads(record["source"])
@@ -206,8 +206,11 @@ def model_predictions_review(
             df["mask"] = generated_df["mask"]
             # create quantized piece with predicted notes
             pred_piece = MidiPiece(df)
+            unmasked_notes_df = generated_df[generated_df["mask"]]
+            unmasked_notes_piece = MidiPiece(unmasked_notes_df)
 
         except ValueError:
+            # create an empty piece if the model did not generate the structure correctly
             generated_df = pd.DataFrame([[23.0, 1.0, 1.0, 1.0, 1.0]], columns=midi_columns)
             generated_df["mask"] = [False]
             pred_piece = MidiPiece(generated_df)
@@ -236,7 +239,7 @@ def model_predictions_review(
             # Predicted
             fig = ff.view.draw_dual_pianoroll(pred_piece)
             st.pyplot(fig)
-            from_fortepyan(pred_piece, key=key + 1)
+            from_fortepyan(pred_piece, secondary_piece=unmasked_notes_piece, key=key + 1)
             st.markdown("**Predicted tokens:**")
             st.markdown(generated_tokens)
         key += 2
