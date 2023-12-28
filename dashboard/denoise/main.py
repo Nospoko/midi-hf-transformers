@@ -21,7 +21,7 @@ from data.dataset import MaskedMidiDataset, load_cache_dataset
 from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
 
 # Set the layout of the Streamlit page
-st.set_page_config(layout="wide", page_title="T5 Denoise", page_icon=":musical_keyboard")
+st.set_page_config(layout="wide", page_title="Denoise MIDI", page_icon=":musical_keyboard")
 
 with st.sidebar:
     devices = ["cpu"] + [f"cuda:{it}" for it in range(torch.cuda.device_count())]
