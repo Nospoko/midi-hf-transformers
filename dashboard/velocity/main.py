@@ -8,14 +8,15 @@ import pandas as pd
 import fortepyan as ff
 import streamlit as st
 from fortepyan import MidiPiece
+from datasets import Dataset, load_dataset
 from omegaconf import OmegaConf, DictConfig
 from streamlit_pianoroll import from_fortepyan
 from transformers import T5Config, BartConfig, T5ForConditionalGeneration, BartForConditionalGeneration
 
 from utils import vocab_size
 from data.midiencoder import VelocityEncoder
+from data.dataset import MyTokenizedMidiDataset
 from data.maskedmidiencoder import MaskedMidiEncoder
-from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
 from data.multitokencoder import MultiMidiEncoder, MultiVelocityEncoder
 
 # Set the layout of the Streamlit page
@@ -67,23 +68,41 @@ def main():
         )
 
 
+def dataset_selection(train_cfg: DictConfig):
+    dataset_name: str = st.text_input(label="dataset", value=train_cfg.dataset_name)
+    split: str = st.text_input(label="split", value="test")
+
+    # load translation dataset and create MyTokenizedMidiDataset
+    val_translation_dataset: Dataset = load_dataset(path=dataset_name, split=split)
+    return val_translation_dataset
+
+
 def model_predictions_review(
     checkpoint: dict,
     train_cfg: DictConfig,
 ):
-    # load checkpoint, force dashboard device
-    dataset_cfg = train_cfg.dataset
-    dataset_name = st.text_input(label="dataset", value=train_cfg.dataset_name)
-    split = st.text_input(label="split", value="test")
+    midi_dataset = dataset_selection(train_cfg=train_cfg)
+    source_df = midi_dataset.to_pandas()
+    composers = source_df.composer.unique()
+    selected_composer = st.selectbox(
+        label="Select composer",
+        options=composers,
+        index=3,
+    )
+
+    ids = source_df.composer == selected_composer
+    piece_titles = source_df[ids].title.unique()
+    selected_title = st.selectbox(
+        label="Select title",
+        options=piece_titles,
+    )
+    st.write(selected_title)
+
+    ids = (source_df.composer == selected_composer) & (source_df.title == selected_title)
+    part_df = source_df[ids]
+    part_dataset = midi_dataset.select(part_df.index.values)
 
     random_seed = st.selectbox(label="random seed", options=range(20))
-
-    # load translation dataset and create MyTokenizedMidiDataset
-    val_translation_dataset = load_cache_dataset(
-        dataset_cfg=dataset_cfg,
-        dataset_name=dataset_name,
-        split=split,
-    )
 
     if "finetune" in train_cfg.train and train_cfg.train.finetune:
         tokenizer = MultiMidiEncoder(
@@ -109,7 +128,7 @@ def model_predictions_review(
         )
 
     dataset = MyTokenizedMidiDataset(
-        dataset=val_translation_dataset,
+        dataset=part_dataset,
         dataset_cfg=train_cfg.dataset,
         encoder=tokenizer,
     )
