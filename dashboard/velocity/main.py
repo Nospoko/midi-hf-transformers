@@ -10,7 +10,7 @@ import streamlit as st
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from streamlit_pianoroll import from_fortepyan
-from transformers import T5Config, T5ForConditionalGeneration
+from transformers import T5Config, BartConfig, T5ForConditionalGeneration, BartForConditionalGeneration
 
 from utils import vocab_size
 from data.midiencoder import VelocityEncoder
@@ -115,20 +115,38 @@ def model_predictions_review(
     )
     start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
     pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
-    config = T5Config(
-        vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=start_token_id,
-        pad_token_id=pad_token_id,
-        eos_token_id=pad_token_id,
-        use_cache=False,
-        d_model=train_cfg.model.d_model,
-        d_kv=train_cfg.model.d_kv,
-        d_ff=train_cfg.model.d_ff,
-        num_layers=train_cfg.model.num_layers,
-        num_heads=train_cfg.model.num_heads,
-    )
+    if train_cfg.model_name == "T5":
+        config = T5Config(
+            vocab_size=vocab_size(train_cfg),
+            decoder_start_token_id=start_token_id,
+            pad_token_id=pad_token_id,
+            eos_token_id=pad_token_id,
+            use_cache=False,
+            d_model=train_cfg.model.d_model,
+            d_kv=train_cfg.model.d_kv,
+            d_ff=train_cfg.model.d_ff,
+            num_layers=train_cfg.model.num_layers,
+            num_heads=train_cfg.model.num_heads,
+        )
 
-    model = T5ForConditionalGeneration(config)
+        model = T5ForConditionalGeneration(config)
+    elif train_cfg.model_name == "BART":
+        config = BartConfig(
+            vocab_size=vocab_size(train_cfg),
+            decoder_start_token_id=start_token_id,
+            pad_token_id=pad_token_id,
+            eos_token_id=pad_token_id,
+            use_cache=False,
+            d_model=train_cfg.model.d_model,
+            encoder_layers=train_cfg.model.encoder_layers,
+            decoder_layers=train_cfg.model.decoder_layers,
+            encoder_ffn_dim=train_cfg.model.encoder_ffn_dim,
+            decoder_ffn_dim=train_cfg.model.decoder_ffn_dim,
+            encoder_attention_heads=train_cfg.model.encoder_attention_heads,
+            decoder_attention_heads=train_cfg.model.decoder_attention_heads,
+        )
+
+        model = BartForConditionalGeneration(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval().to(DEVICE)
 

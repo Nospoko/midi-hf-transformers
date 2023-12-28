@@ -11,7 +11,7 @@ from datasets import Dataset
 from fortepyan import MidiPiece
 from omegaconf import OmegaConf, DictConfig
 from streamlit_pianoroll import from_fortepyan
-from transformers import T5Config, T5ForConditionalGeneration, BartConfig, BartForConditionalGeneration
+from transformers import T5Config, BartConfig, T5ForConditionalGeneration, BartForConditionalGeneration
 
 from utils import vocab_size
 from data.midiencoder import QuantizedMidiEncoder
@@ -149,7 +149,7 @@ def model_predictions_review(
         model = T5ForConditionalGeneration(config)
     elif train_cfg.model_name == "BART":
         config = BartConfig(
-            vocab_size=vocab_size(cfg),
+            vocab_size=vocab_size(train_cfg),
             decoder_start_token_id=start_token_id,
             pad_token_id=pad_token_id,
             eos_token_id=pad_token_id,

@@ -2,32 +2,27 @@ train:
   num_epochs: 5
   accum_iter: 10
   batch_size: 8
-  base_lr: 5e-7
+  base_lr: 5e-6
   warmup: 4000
   finetune: True
 
+pretrained_checkpoint: midi-bart-2023-12-26-19-05.pt
 model_name: BART
 dataset_name: 'roszcz/maestro-v1-sustain'
-target: denoise
+target: velocity
 seed: 26
 
 overfit: False
 
-tokens_per_note: multiple
+tokens_per_note: "multiple"
 time_quantization_method: start
-masking_probability: 0.3
-mask: notes
-
-encoder: velocity
-time_bins: 100
-
 dataset:
   sequence_duration: 5
   sequence_step: 2
 
   quantization:
-    start: 50
-    duration: 5
+    start: 20
+    duration: 3
     velocity: 3
 
 device: "cuda:0"
