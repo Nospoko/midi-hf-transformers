@@ -6,6 +6,7 @@ from omegaconf import OmegaConf, DictConfig
 import wandb
 from data.dataset import load_cache_dataset
 from pipelines.T5.main import main as t5_training
+from pipelines.BART.main import main as bart_training
 
 
 def initialize_wandb(cfg: DictConfig):
@@ -51,6 +52,8 @@ def main(cfg: DictConfig):
             print("Connection error, trying again...")
     if cfg.model_name == "T5":
         t5_training(cfg, train_translation_dataset, val_translation_dataset)
+    elif cfg.model_name == "BART":
+        bart_training(cfg, train_translation_dataset, val_translation_dataset)
 
 
 if __name__ == "__main__":
