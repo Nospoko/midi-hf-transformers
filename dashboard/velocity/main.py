@@ -15,9 +15,9 @@ from transformers import T5Config, BartConfig, T5ForConditionalGeneration, BartF
 
 from utils import vocab_size
 from data.midiencoder import VelocityEncoder
-from data.dataset import MyTokenizedMidiDataset
 from data.maskedmidiencoder import MaskedMidiEncoder
 from data.multitokencoder import MultiMidiEncoder, MultiVelocityEncoder
+from data.dataset import MyTokenizedMidiDataset, build_translation_dataset, build_AT_translation_dataset
 
 # Set the layout of the Streamlit page
 st.set_page_config(layout="wide", page_title="Velocity Transformer", page_icon=":musical_keyboard")
@@ -102,6 +102,11 @@ def model_predictions_review(
     part_df = source_df[ids]
     part_dataset = midi_dataset.select(part_df.index.values)
 
+    if "dstart" in train_cfg.dataset.quantization:
+        translation_dataset = build_translation_dataset(part_dataset, train_cfg.dataset)
+    else:
+        translation_dataset = build_AT_translation_dataset(part_dataset, train_cfg.dataset)
+
     random_seed = st.selectbox(label="random seed", options=range(20))
 
     if "finetune" in train_cfg.train and train_cfg.train.finetune:
@@ -128,10 +133,11 @@ def model_predictions_review(
         )
 
     dataset = MyTokenizedMidiDataset(
-        dataset=part_dataset,
+        dataset=translation_dataset,
         dataset_cfg=train_cfg.dataset,
         encoder=tokenizer,
     )
+
     start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
     pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
     if train_cfg.model_name == "T5":
@@ -149,7 +155,7 @@ def model_predictions_review(
         )
 
         model = T5ForConditionalGeneration(config)
-    elif train_cfg.model_name == "BART":
+    else:
         config = BartConfig(
             vocab_size=vocab_size(train_cfg),
             decoder_start_token_id=start_token_id,
@@ -171,25 +177,6 @@ def model_predictions_review(
 
     n_parameters: float = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
-
-    start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
-    pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
-    config = T5Config(
-        vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=start_token_id,
-        pad_token_id=pad_token_id,
-        eos_token_id=pad_token_id,
-        use_cache=False,
-        d_model=train_cfg.model.d_model,
-        d_kv=train_cfg.model.d_kv,
-        d_ff=train_cfg.model.d_ff,
-        num_layers=train_cfg.model.num_layers,
-        num_heads=train_cfg.model.num_heads,
-    )
-
-    model = T5ForConditionalGeneration(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval().to(DEVICE)
 
     n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
@@ -230,6 +217,7 @@ def model_predictions_review(
         pred_piece_df = true_piece.df.copy()
 
         # change untokenized velocities to model predictions
+        pred_piece_df = pred_piece_df.iloc[: len(generated_velocity)]
         pred_piece_df["velocity"] = generated_velocity
         pred_piece_df["velocity"] = pred_piece_df["velocity"].fillna(0)
 
