@@ -119,6 +119,16 @@ def calculate_average_distance(out: torch.Tensor, tgt: torch.Tensor, pad_idx: in
     return torch.dist(labels, tgt.to(float), p=1) / len(labels)
 
 
+def calculate_accuracy(out: torch.Tensor, tgt: torch.Tensor, pad_idx: int = 1) -> torch.Tensor:
+    labels = out.argmax(1).to(float)
+    tgt[tgt == -100] = pad_idx
+    tgt = tgt[tgt != pad_idx]
+    labels = labels[: len(tgt)]
+    labels[tgt == pad_idx] = pad_idx
+
+    return (labels == tgt).sum() / len(labels)
+
+
 def learning_rate_schedule(step: int, warmup: int):
     return 1 / sqrt(max(step, warmup))
 

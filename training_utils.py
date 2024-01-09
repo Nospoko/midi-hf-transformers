@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 
 import wandb
-from utils import calculate_average_distance
 from data.dataset import MyTokenizedMidiDataset
+from utils import calculate_accuracy, calculate_average_distance
 
 
 def train_model(
@@ -193,7 +193,7 @@ def train_epoch(
         loss.backward()
 
         dist = calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
-        accuracy = (out_rearranged == target).sum() / n_tokens
+        accuracy = calculate_accuracy(out_rearranged, target, pad_idx=pad_idx)
 
         # Update the model parameters and optimizer gradients every `accum_iter` iterations
         if it % accum_iter == 0 or it == steps - 1:
@@ -276,7 +276,7 @@ def val_epoch(
         total_tokens += n_tokens
         tokens += n_tokens
         total_dist += calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
-        total_acc += (out_rearranged == target).sum() / n_tokens
+        total_acc += calculate_accuracy(out_rearranged, target, pad_idx=pad_idx)
 
     # Return average loss over all tokens and updated train state
     return total_loss / len(dataloader), total_dist / len(dataloader), total_acc / len(dataloader)
