@@ -175,3 +175,19 @@ class MaskedNoteEncoder(MaskedMidiEncoder):
         mask_ids_column[mask_ids] = True
         df["mask"] = mask_ids_column
         return df
+
+
+class SingleMaskedNoteEncoder(MaskedNoteEncoder):
+    def __init__(self, base_encoder: MultiTokEncoder | MidiEncoder, masking_probability: float = 0.15):
+        super().__init__(base_encoder, masking_probability)
+
+    def encode_record(self, record: dict) -> tuple[list[int], list[int]]:
+        """
+        Encode record into src and tgt for unsupervised BART learning.
+        """
+        src_tokens, tgt_tokens = self.mask_record(record)
+
+        src = [self.token_to_id[token] for token in src_tokens]
+        tgt = [self.token_to_id[token] for token in tgt_tokens]
+
+        return src, tgt
