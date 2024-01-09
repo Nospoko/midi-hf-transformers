@@ -17,7 +17,7 @@ from utils import vocab_size
 from data.midiencoder import QuantizedMidiEncoder
 from data.multitokencoder import MultiMidiEncoder
 from data.quantizer import MidiQuantizer, MidiATQuantizer
-from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder
+from data.maskedmidiencoder import MaskedMidiEncoder, MaskedNoteEncoder, SingleMaskedNoteEncoder
 from data.dataset import MaskedMidiDataset, build_translation_dataset, build_AT_translation_dataset
 
 # Set the layout of the Streamlit page
@@ -118,7 +118,16 @@ def create_dataset(base_dataset: Dataset, train_cfg: DictConfig):
 
     if "mask" in train_cfg:
         if train_cfg.mask == "notes":
-            encoder = MaskedNoteEncoder(base_encoder=base_tokenizer, masking_probability=train_cfg.masking_probability)
+            if train_cfg.model_name == "T5":
+                encoder = MaskedNoteEncoder(
+                    base_encoder=base_tokenizer,
+                    masking_probability=train_cfg.masking_probability,
+                )
+            else:
+                encoder = SingleMaskedNoteEncoder(
+                    base_encoder=base_tokenizer,
+                    masking_probability=train_cfg.masking_probability,
+                )
         else:
             encoder = MaskedMidiEncoder(base_encoder=base_tokenizer, masking_probability=train_cfg.masking_probability)
     else:
@@ -246,6 +255,8 @@ def model_predictions_review(
             generated_df = pd.DataFrame([[23.0, 1.0, 1.0, 1.0, 1.0]], columns=midi_columns)
             generated_df["mask"] = [False]
             pred_piece = MidiPiece(generated_df)
+            unmasked_notes_df = generated_df[generated_df["mask"]]
+            unmasked_notes_piece = MidiPiece(unmasked_notes_df)
 
         pred_piece.source = true_piece.source.copy()
 
