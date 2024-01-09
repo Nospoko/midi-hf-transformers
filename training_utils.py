@@ -214,7 +214,6 @@ def train_epoch(
             lr = optimizer.param_groups[0]["lr"]
             elapsed = time.time() - start
             tok_rate = tokens / elapsed
-            accuracy = (out_rearranged == target).sum() / n_tokens
             progress_bar.set_description(
                 f"Step: {it:6d}/{steps} | acc_step: {n_accum:3d} | loss: {loss_item:6.2f} | dist: {dist:6.2f} "
                 + f"| acc: {accuracy:6.2f} | tps: {tok_rate:7.1f} | lr: {lr:6.1e}"
