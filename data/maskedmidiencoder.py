@@ -185,13 +185,14 @@ class SingleMaskedNoteEncoder(MaskedNoteEncoder):
         """
         Mask record and return tuple of src and tgt tokens with masks.
         """
-        src_tokens = self.base_encoder.tokenize_src(record)
-        tgt_tokens = src_tokens.copy()
-        num_masks = self.masking_probability * len(src_tokens)
+        src_tokens: list[str] = self.base_encoder.tokenize_src(record)
+        tgt_tokens: list[str] = src_tokens.copy()
+        num_masks: float = self.masking_probability * len(src_tokens) // 3
 
-        ids_to_mask = np.random.randint(len(src_tokens), size=int(num_masks))
-        np_src = np.array(src_tokens)
-        np_tgt = np.array(tgt_tokens)
+        ids_to_mask: np.ndarray[int] = np.random.randint(len(src_tokens) // 3, size=int(num_masks)) * 3
+        ids_to_mask = np.concatenate([ids_to_mask, ids_to_mask + 1, ids_to_mask + 2])
+        np_src: np.ndarray[int] = np.array(src_tokens)
+        np_tgt: np.ndarray[int] = np.array(tgt_tokens)
 
         np_src[ids_to_mask] = "<MASK>"
 
