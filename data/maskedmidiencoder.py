@@ -219,3 +219,46 @@ class SingleMaskedNoteEncoder(MaskedNoteEncoder):
         df["mask"] = mask_ids_column
 
         return df
+
+
+class SingleMaskedMidiEncoder(MaskedMidiEncoder):
+    def __init__(self, base_encoder: MultiTokEncoder | MidiEncoder, masking_probability: float = 0.15):
+        super().__init__(base_encoder, masking_probability)
+
+    def mask_record(self, record: dict) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Mask record and return tuple of src and tgt tokens with masks.
+        """
+        src_tokens = self.base_encoder.tokenize_src(record)
+        tgt_tokens = src_tokens.copy()
+        num_masks = self.masking_probability * len(src_tokens)
+
+        ids_to_mask = np.random.randint(len(src_tokens), size=int(num_masks))
+        np_src = np.array(src_tokens)
+        np_tgt = np.array(tgt_tokens)
+
+        np_src[ids_to_mask] = "<MASK>"
+
+        return np_src, np_tgt
+
+    def encode_record(self, record: dict) -> tuple[list[int], list[int]]:
+        """
+        Encode record into src and tgt for unsupervised T5 learning.
+        """
+        src_tokens, tgt_tokens = self.mask_record(record)
+
+        src = [self.token_to_id[token] for token in src_tokens]
+        tgt = [self.token_to_id[token] for token in tgt_tokens]
+
+        return src, tgt
+
+    def decode(self, src_token_ids: torch.Tensor, tgt_token_ids: torch.Tensor) -> pd.DataFrame:
+        tokens: list[str] = [self.vocab[token_id] for token_id in tgt_token_ids]
+        mask_ids = src_token_ids == self.token_to_id["<MASK>"]
+
+        df: pd.DataFrame = self.base_encoder.untokenize_src(tokens)
+        mask_ids_column = np.zeros_like(df["pitch"], dtype=bool)
+        mask_ids_column[mask_ids] = True
+        df["mask"] = mask_ids_column
+
+        return df
