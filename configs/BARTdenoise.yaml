@@ -1,0 +1,49 @@
+train:
+  num_epochs: 5
+  accum_iter: 10
+  batch_size: 8
+  base_lr: 5e-7
+  warmup: 4000
+  finetune: True
+
+model_name: BART
+dataset_name: 'roszcz/maestro-v1-sustain'
+target: denoise
+seed: 26
+
+overfit: False
+
+tokens_per_note: multiple
+time_quantization_method: start
+masking_probability: 0.3
+mask: notes
+
+encoder: velocity
+time_bins: 100
+
+dataset:
+  sequence_duration: 5
+  sequence_step: 2
+
+  quantization:
+    start: 100
+    duration: 5
+    velocity: 3
+
+device: "cuda:0"
+
+log: True
+log_frequency: 10
+run_name: midi-bart-${now:%Y-%m-%d-%H-%M}
+project: "midi-bart"
+
+pre_defined_model: null
+
+model:
+  encoder_layers: 6
+  encoder_ffn_dim: 2048
+  encoder_attention_heads: 8
+  decoder_layers: 6
+  decoder_ffn_dim: 2048
+  decoder_attention_heads: 8
+  d_model: 512

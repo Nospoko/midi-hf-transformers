@@ -8,15 +8,16 @@ import pandas as pd
 import fortepyan as ff
 import streamlit as st
 from fortepyan import MidiPiece
+from datasets import Dataset, load_dataset
 from omegaconf import OmegaConf, DictConfig
 from streamlit_pianoroll import from_fortepyan
-from transformers import T5Config, T5ForConditionalGeneration
+from transformers import T5Config, BartConfig, T5ForConditionalGeneration, BartForConditionalGeneration
 
 from utils import vocab_size
 from data.midiencoder import VelocityEncoder
 from data.maskedmidiencoder import MaskedMidiEncoder
-from data.dataset import MyTokenizedMidiDataset, load_cache_dataset
 from data.multitokencoder import MultiMidiEncoder, MultiVelocityEncoder
+from data.dataset import MyTokenizedMidiDataset, build_translation_dataset, build_AT_translation_dataset
 
 # Set the layout of the Streamlit page
 st.set_page_config(layout="wide", page_title="Velocity Transformer", page_icon=":musical_keyboard")
@@ -67,23 +68,46 @@ def main():
         )
 
 
+def dataset_selection(train_cfg: DictConfig):
+    dataset_name: str = st.text_input(label="dataset", value=train_cfg.dataset_name)
+    split: str = st.text_input(label="split", value="test")
+
+    # load translation dataset and create MyTokenizedMidiDataset
+    val_translation_dataset: Dataset = load_dataset(path=dataset_name, split=split)
+    return val_translation_dataset
+
+
 def model_predictions_review(
     checkpoint: dict,
     train_cfg: DictConfig,
 ):
-    # load checkpoint, force dashboard device
-    dataset_cfg = train_cfg.dataset
-    dataset_name = st.text_input(label="dataset", value=train_cfg.dataset_name)
-    split = st.text_input(label="split", value="test")
+    midi_dataset = dataset_selection(train_cfg=train_cfg)
+    source_df = midi_dataset.to_pandas()
+    composers = source_df.composer.unique()
+    selected_composer = st.selectbox(
+        label="Select composer",
+        options=composers,
+        index=3,
+    )
+
+    ids = source_df.composer == selected_composer
+    piece_titles = source_df[ids].title.unique()
+    selected_title = st.selectbox(
+        label="Select title",
+        options=piece_titles,
+    )
+    st.write(selected_title)
+
+    ids = (source_df.composer == selected_composer) & (source_df.title == selected_title)
+    part_df = source_df[ids]
+    part_dataset = midi_dataset.select(part_df.index.values)
+
+    if "dstart" in train_cfg.dataset.quantization:
+        translation_dataset = build_translation_dataset(part_dataset, train_cfg.dataset)
+    else:
+        translation_dataset = build_AT_translation_dataset(part_dataset, train_cfg.dataset)
 
     random_seed = st.selectbox(label="random seed", options=range(20))
-
-    # load translation dataset and create MyTokenizedMidiDataset
-    val_translation_dataset = load_cache_dataset(
-        dataset_cfg=dataset_cfg,
-        dataset_name=dataset_name,
-        split=split,
-    )
 
     if "finetune" in train_cfg.train and train_cfg.train.finetune:
         tokenizer = MultiMidiEncoder(
@@ -109,50 +133,50 @@ def model_predictions_review(
         )
 
     dataset = MyTokenizedMidiDataset(
-        dataset=val_translation_dataset,
+        dataset=translation_dataset,
         dataset_cfg=train_cfg.dataset,
         encoder=tokenizer,
     )
+
     start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
     pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
-    config = T5Config(
-        vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=start_token_id,
-        pad_token_id=pad_token_id,
-        eos_token_id=pad_token_id,
-        use_cache=False,
-        d_model=train_cfg.model.d_model,
-        d_kv=train_cfg.model.d_kv,
-        d_ff=train_cfg.model.d_ff,
-        num_layers=train_cfg.model.num_layers,
-        num_heads=train_cfg.model.num_heads,
-    )
+    if train_cfg.model_name == "T5":
+        config = T5Config(
+            vocab_size=vocab_size(train_cfg),
+            decoder_start_token_id=start_token_id,
+            pad_token_id=pad_token_id,
+            eos_token_id=pad_token_id,
+            use_cache=False,
+            d_model=train_cfg.model.d_model,
+            d_kv=train_cfg.model.d_kv,
+            d_ff=train_cfg.model.d_ff,
+            num_layers=train_cfg.model.num_layers,
+            num_heads=train_cfg.model.num_heads,
+        )
 
-    model = T5ForConditionalGeneration(config)
+        model = T5ForConditionalGeneration(config)
+    else:
+        config = BartConfig(
+            vocab_size=vocab_size(train_cfg),
+            decoder_start_token_id=start_token_id,
+            pad_token_id=pad_token_id,
+            eos_token_id=pad_token_id,
+            use_cache=False,
+            d_model=train_cfg.model.d_model,
+            encoder_layers=train_cfg.model.encoder_layers,
+            decoder_layers=train_cfg.model.decoder_layers,
+            encoder_ffn_dim=train_cfg.model.encoder_ffn_dim,
+            decoder_ffn_dim=train_cfg.model.decoder_ffn_dim,
+            encoder_attention_heads=train_cfg.model.encoder_attention_heads,
+            decoder_attention_heads=train_cfg.model.decoder_attention_heads,
+        )
+
+        model = BartForConditionalGeneration(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval().to(DEVICE)
 
     n_parameters: float = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
-
-    start_token_id: int = dataset.encoder.token_to_id["<CLS>"]
-    pad_token_id: int = dataset.encoder.token_to_id["<PAD>"]
-    config = T5Config(
-        vocab_size=vocab_size(train_cfg),
-        decoder_start_token_id=start_token_id,
-        pad_token_id=pad_token_id,
-        eos_token_id=pad_token_id,
-        use_cache=False,
-        d_model=train_cfg.model.d_model,
-        d_kv=train_cfg.model.d_kv,
-        d_ff=train_cfg.model.d_ff,
-        num_layers=train_cfg.model.num_layers,
-        num_heads=train_cfg.model.num_heads,
-    )
-
-    model = T5ForConditionalGeneration(config)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval().to(DEVICE)
 
     n_parameters = sum(p.numel() for p in model.parameters()) / 1e6
     st.markdown(f"Model parameters: {n_parameters:.3f}M")
@@ -193,6 +217,7 @@ def model_predictions_review(
         pred_piece_df = true_piece.df.copy()
 
         # change untokenized velocities to model predictions
+        pred_piece_df = pred_piece_df.iloc[: len(generated_velocity)]
         pred_piece_df["velocity"] = generated_velocity
         pred_piece_df["velocity"] = pred_piece_df["velocity"].fillna(0)
 

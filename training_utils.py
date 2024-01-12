@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 from omegaconf import OmegaConf, DictConfig
 
 import wandb
-from utils import calculate_average_distance
 from data.dataset import MyTokenizedMidiDataset
+from utils import calculate_accuracy, calculate_average_distance
 
 
 def train_model(
@@ -48,7 +48,7 @@ def train_model(
         print(f"Epoch {epoch}", flush=True)
 
         # Train model for one epoch
-        t_loss, t_dist = train_epoch(
+        t_loss, t_dist, t_acc = train_epoch(
             dataloader=train_dataloader,
             val_dataloader=val_dataloader,
             model=model,
@@ -64,7 +64,7 @@ def train_model(
         print(f"Epoch {epoch} Validation", flush=True)
         model.eval()
         # Evaluate the model on validation set
-        v_loss, v_dist = val_epoch(
+        v_loss, v_dist, v_acc = val_epoch(
             dataloader=val_dataloader,
             model=model,
             device=cfg.device,
@@ -86,8 +86,10 @@ def train_model(
                 {
                     "val/loss_epoch": v_loss,
                     "val/dist_epoch": v_dist,
+                    "val/accuracy_epoch": v_acc,
                     "train/loss_epoch": t_loss,
                     "train/dist_epoch": t_dist,
+                    "train/accuracy_epoch": t_acc,
                     "epoch": epoch,
                 }
             )
@@ -155,10 +157,13 @@ def train_epoch(
     log_frequency: int = 10,
     log: bool = False,
     device: str = "cpu",
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     start: float = time.time()
+
     total_loss: float = 0
     total_dist: float = 0
+    total_acc: float = 0
+
     tokens: int = 0
     n_accum: int = 0
     it: int = 0
@@ -188,6 +193,7 @@ def train_epoch(
         loss.backward()
 
         dist = calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
+        accuracy = calculate_accuracy(out_rearranged, target, pad_idx=pad_idx)
 
         # Update the model parameters and optimizer gradients every `accum_iter` iterations
         if it % accum_iter == 0 or it == steps - 1:
@@ -201,6 +207,7 @@ def train_epoch(
         total_loss += loss.item()
         tokens += n_tokens
         total_dist += dist
+        total_acc += accuracy
 
         # log metrics every log_frequency steps
         if it % log_frequency == 1:
@@ -208,16 +215,16 @@ def train_epoch(
             elapsed = time.time() - start
             tok_rate = tokens / elapsed
             progress_bar.set_description(
-                f"Step: {it:6d}/{steps} | acc_step: {n_accum:3d} | loss: {loss_item:6.2f} | dist: {dist:6.2f}"
-                + f"| tps: {tok_rate:7.1f} | lr: {lr:6.1e}"
+                f"Step: {it:6d}/{steps} | acc_step: {n_accum:3d} | loss: {loss_item:6.2f} | dist: {dist:6.2f} "
+                + f"| acc: {accuracy:6.2f} | tps: {tok_rate:7.1f} | lr: {lr:6.1e}"
             )
 
             # log the loss each to Weights and Biases
             if log:
-                wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist})
+                wandb.log({"train/loss_step": loss.item(), "train/dist_step": dist, "train/accuracy_step": accuracy})
 
         if it % log_frequency * 200 == 1:
-            val_loss, val_dist = val_epoch(
+            val_loss, val_dist, val_acc = val_epoch(
                 dataloader=val_dataloader,
                 model=model,
                 pad_idx=pad_idx,
@@ -225,10 +232,10 @@ def train_epoch(
                 device=device,
             )
             if log:
-                wandb.log({"val/loss_step": val_loss, "val/dist_step": val_dist})
+                wandb.log({"val/loss_step": val_loss, "val/dist_step": val_dist, "val/accuracy_step": val_acc})
 
     # Return average loss over all tokens and updated train state
-    return total_loss / len(dataloader), total_dist / len(dataloader)
+    return total_loss / len(dataloader), total_dist / len(dataloader), total_acc / len(dataloader)
 
 
 @torch.no_grad()
@@ -238,9 +245,10 @@ def val_epoch(
     pad_idx: int = 1,
     cls_idx: int = 0,
     device: str = "cpu",
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     total_tokens: int = 0
     total_loss: float = 0
+    total_acc: float = 0
     tokens: int = 0
     total_dist: float = 0
 
@@ -267,6 +275,7 @@ def val_epoch(
         total_tokens += n_tokens
         tokens += n_tokens
         total_dist += calculate_average_distance(out_rearranged, target, pad_idx=pad_idx)
+        total_acc += calculate_accuracy(out_rearranged, target, pad_idx=pad_idx)
 
     # Return average loss over all tokens and updated train state
-    return total_loss / len(dataloader), total_dist / len(dataloader)
+    return total_loss / len(dataloader), total_dist / len(dataloader), total_acc / len(dataloader)
