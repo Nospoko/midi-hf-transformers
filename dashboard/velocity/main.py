@@ -193,6 +193,7 @@ def model_predictions_review(
 
     # predict velocities and get src, tgt and model output
     print("Making predictions ...")
+    key = np.random.random()
     for record_id in idxs:
         # Numpy to int :(
         record = dataset.get_complete_record(int(record_id))
@@ -233,13 +234,14 @@ def model_predictions_review(
             # Unchanged
             fig = ff.view.draw_pianoroll_with_velocities(true_piece)
             st.pyplot(fig)
-            from_fortepyan(true_piece)
+            from_fortepyan(true_piece, key=key)
 
         with cols[1]:
             # Predicted
             fig = ff.view.draw_pianoroll_with_velocities(pred_piece)
             st.pyplot(fig)
-            from_fortepyan(pred_piece)
+            from_fortepyan(pred_piece, key=key+1)
+        key += 2
 
 
 if __name__ == "__main__":
