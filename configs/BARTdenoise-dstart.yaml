@@ -6,7 +6,7 @@ train:
   warmup: 4000
   finetune: False
 
-model_name: T5
+model_name: BART
 dataset_name: 'roszcz/maestro-v1-sustain'
 target: denoise
 seed: 26
